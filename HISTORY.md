@@ -1,5 +1,5 @@
 # Rocksdb Change Log
-## Unreleased
+## 6.16.0 (12/18/2020)
 ### Behavior Changes
 * Attempting to write a merge operand without explicitly configuring `merge_operator` now fails immediately, causing the DB to enter read-only mode. Previously, failure was deferred until the `merge_operator` was needed by a user read or a background operation.
 
