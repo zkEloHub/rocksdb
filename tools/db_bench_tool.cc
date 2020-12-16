@@ -6525,5 +6525,5 @@ int db_bench_tool(int argc, char** argv) {
 
   return 0;
 }
-}  // namespace rocksdb
+}
 #endif
