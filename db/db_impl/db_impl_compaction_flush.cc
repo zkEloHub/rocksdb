@@ -274,7 +274,7 @@ Status DBImpl::FlushMemTablesToOutputFiles(
 Status DBImpl::FlushMemTableToNvm(ColumnFamilyData *cfd,const MutableCFOptions &mutable_cf_options,
                             bool *made_progress, JobContext *job_context,
                             SuperVersionContext *superversion_context,
-                            LogBuffer *log_buffer){
+                            LogBuffer *log_buffer, Env::Priority thread_pri){
   mutex_.AssertHeld();
   assert(cfd->imm()->NumNotFlushed() != 0);
   assert(cfd->imm()->IsFlushPending());
@@ -296,7 +296,7 @@ Status DBImpl::FlushMemTableToNvm(ColumnFamilyData *cfd,const MutableCFOptions &
       GetDataDir(cfd, 0U),
       GetCompressionFlush(*cfd->ioptions(), mutable_cf_options), stats_,
       &event_logger_, mutable_cf_options.report_bg_io_stats,
-      true /* sync_output_directory */, true /* write_manifest */);
+      true /* sync_output_directory */, true /* write_manifest */, thread_pri);
 
   FileMetaData file_meta;
 
@@ -378,8 +378,9 @@ Status DBImpl::FlushMemTableToNvm(ColumnFamilyData *cfd,const MutableCFOptions &
     
 
 }
+
 Status DBImpl::FlushMemTablesToNvm(const autovector<BGFlushArg>& bg_flush_args, bool* made_progress,
-      JobContext* job_context, LogBuffer* log_buffer){
+      JobContext* job_context, LogBuffer* log_buffer, Env::Priority thread_pri) {
   Status s;
   for (auto& arg : bg_flush_args) {
     ColumnFamilyData* cfd = arg.cfd_;
@@ -387,7 +388,7 @@ Status DBImpl::FlushMemTablesToNvm(const autovector<BGFlushArg>& bg_flush_args, 
         *cfd->GetLatestMutableCFOptions();
     SuperVersionContext* superversion_context = arg.superversion_context_;
     s = FlushMemTableToNvm(cfd, mutable_cf_options, made_progress,
-                                job_context, superversion_context, log_buffer);
+                                job_context, superversion_context, log_buffer, thread_pri);
     /*if(s.ok()){
       job_context->nvmcfs.push_back(cfd->nvmcfmodule);
     }*/
@@ -396,7 +397,6 @@ Status DBImpl::FlushMemTablesToNvm(const autovector<BGFlushArg>& bg_flush_args, 
     }
   }
   return s;
-        
  }
 ///
 
@@ -2320,7 +2320,7 @@ Status DBImpl::BackgroundFlush(bool* made_progress, JobContext* job_context,
     }
     if (immutable_db_options_.nvm_setup != nullptr && immutable_db_options_.nvm_setup->use_nvm_module) {
       status = FlushMemTablesToNvm(bg_flush_args, made_progress,
-                                        job_context, log_buffer);
+                                        job_context, log_buffer, thread_pri);
     } else{
     status = FlushMemTablesToOutputFiles(bg_flush_args, made_progress,
                                          job_context, log_buffer, thread_pri);

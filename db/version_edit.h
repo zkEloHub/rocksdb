@@ -130,7 +130,7 @@ struct FileMetaData {
                                // file.
 
   FileMetaData()
-      : s_nvm_level0(false),
+      : is_nvm_level0(false),
         first_key_index(0),
         nvm_sstable_index(-1),
         keys_num(0),

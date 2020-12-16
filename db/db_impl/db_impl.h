@@ -1282,10 +1282,10 @@ Status FlushMemTableToNvm(ColumnFamilyData *cfd,
                                  const MutableCFOptions &mutable_cf_options,
                                  bool *made_progress, JobContext *job_context,
                                  SuperVersionContext *superversion_context,
-                                 LogBuffer *log_buffer);
+                                 LogBuffer *log_buffer, Env::Priority thread_pri);
 Status FlushMemTablesToNvm(
       const autovector<BGFlushArg>& bg_flush_args, bool* made_progress,
-      JobContext* job_context, LogBuffer* log_buffer);
+      JobContext* job_context, LogBuffer* log_buffer, Env::Priority thread_pri);
 ///
 
   // Flush the memtables of (multiple) column families to multiple files on

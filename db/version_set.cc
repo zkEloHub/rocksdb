@@ -866,14 +866,12 @@ namespace {
 class LevelIterator final : public InternalIterator {
  public:
   LevelIterator(TableCache* table_cache, const ReadOptions& read_options,
-                const EnvOptions& env_options,
-                const InternalKeyComparator& icomparator,
-                const LevelFilesBrief* flevel,
-                const SliceTransform* prefix_extractor, bool should_sample,
-                HistogramImpl* file_read_hist, TableReaderCaller caller,
+                const EnvOptions& env_options, const InternalKeyComparator& icomparator,
+                const LevelFilesBrief* flevel, const SliceTransform* prefix_extractor, 
+                bool should_sample, HistogramImpl* file_read_hist, TableReaderCaller caller,
                 bool skip_filters, int level, RangeDelAggregator* range_del_agg,
-                const std::vector<AtomicCompactionUnitBoundary>*
-                    compaction_boundaries = nullptr)
+                const std::vector<AtomicCompactionUnitBoundary>* compaction_boundaries = 
+                nullptr)
       : table_cache_(table_cache),
         read_options_(read_options),
         env_options_(env_options),
@@ -5150,7 +5148,7 @@ InternalIterator* VersionSet::MakeColumnCompactionInputIterator(
             c->mutable_cf_options()->prefix_extractor.get(),
             false /* should_sample */,
             nullptr /* no per level latency histogram */,
-            true /* for_compaction */, false /* skip_filters */,
+            TableReaderCaller::kCompaction, false /* skip_filters */,
             static_cast<int>(which) /* level */, range_del_agg,
             c->boundaries(which));
       }

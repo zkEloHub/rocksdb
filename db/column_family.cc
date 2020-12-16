@@ -790,10 +790,10 @@ WriteStallCondition ColumnFamilyData::RecalculateWriteStallConditions(
       internal_stats_->AddCFStats(InternalStats::MEMTABLE_LIMIT_STOPS, 1);
       ROCKS_LOG_WARN(
           ioptions_.info_log,
-          "[%s] Stopping writes because L0 we have %d immutable memtables "
-          "(waiting for flush), max_write_buffer_number is set to %d, level-0 files: %.2 MB",
+          "[%s] Stopping writes because we have %d immutable memtables "
+          "(waiting for flush), max_write_buffer_number is set to %d, level-0 files",
           name_.c_str(), imm()->NumNotFlushed(),
-          mutable_cf_options.max_write_buffer_number, vstorage->NumLevelBytes(0)/1048576);
+          mutable_cf_options.max_write_buffer_number);
     } else if (write_stall_condition == WriteStallCondition::kStopped &&
                write_stall_cause == WriteStallCause::kL0FileCountLimit) {
       write_controller_token_ = write_controller->GetStopToken();
@@ -803,8 +803,10 @@ WriteStallCondition ColumnFamilyData::RecalculateWriteStallConditions(
             InternalStats::LOCKED_L0_FILE_COUNT_LIMIT_STOPS, 1);
       }
       ROCKS_LOG_WARN(ioptions_.info_log,
-                     "[%s] Stopping writes because we have %d level-0 files",
-                     name_.c_str(), vstorage->l0_delay_trigger_count());
+                     "[%s] Stalling writes because L0 we have %d level-0 files:%.2f MB "
+                     "rate %" PRIu64,
+                     name_.c_str(), vstorage->l0_delay_trigger_count(),vstorage->NumLevelBytes(0)/1048576.0,
+                     write_controller->delayed_write_rate());
     } else if (write_stall_condition == WriteStallCondition::kStopped &&
                write_stall_cause == WriteStallCause::kPendingCompactionBytes) {
       write_controller_token_ = write_controller->GetStopToken();
@@ -812,9 +814,10 @@ WriteStallCondition ColumnFamilyData::RecalculateWriteStallConditions(
           InternalStats::PENDING_COMPACTION_BYTES_LIMIT_STOPS, 1);
       ROCKS_LOG_WARN(
           ioptions_.info_log,
-          "[%s] Stopping writes because of estimated pending compaction "
-          "bytes %" PRIu64,
-          name_.c_str(), compaction_needed_bytes);
+          "[%s] Stalling writes because of estimated pending compaction "
+          "bytes %" PRIu64 " rate %" PRIu64,
+          name_.c_str(), vstorage->estimated_compaction_needed_bytes(),
+          write_controller->delayed_write_rate());
     } else if (write_stall_condition == WriteStallCondition::kDelayed &&
                write_stall_cause == WriteStallCause::kMemtableLimit) {
       write_controller_token_ =
@@ -856,10 +859,8 @@ WriteStallCondition ColumnFamilyData::RecalculateWriteStallConditions(
             InternalStats::LOCKED_L0_FILE_COUNT_LIMIT_SLOWDOWNS, 1);
       }
       ROCKS_LOG_WARN(ioptions_.info_log,
-                     "[%s] Stalling writes because L0 we have %d level-0 files: %.2f MB "
-                     "rate %" PRIu64,
-                     name_.c_str(), vstorage->l0_delay_trigger_count(),
-                     write_controller->delayed_write_rate(), vstorage->NumLevelBytes(0)/1048576.0);
+                     "[%s] Stopping writes because L0 we have %d level-0 files:%.2f MB",
+                     name_.c_str(), vstorage->l0_delay_trigger_count(),vstorage->NumLevelBytes(0)/1048576.0);
     } else if (write_stall_condition == WriteStallCondition::kDelayed &&
                write_stall_cause == WriteStallCause::kPendingCompactionBytes) {
       // If the distance to hard limit is less than 1/4 of the gap between soft
@@ -973,7 +974,6 @@ void ColumnFamilyData::CreateNewMemtable(
 }
 
 bool ColumnFamilyData::NeedsCompaction() const {
-  /* return compaction_picker_->NeedsCompaction(current_->storage_info()); */
   ///
   if (nvmcfmodule == nullptr) return false;
   if(bg_column_compaction_){   //暂时只允许一个column compaction

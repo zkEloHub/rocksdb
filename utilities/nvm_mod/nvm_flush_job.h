@@ -69,7 +69,8 @@ public:
                 EventLogger* event_logger, 
                 bool measure_io_stats,
                 const bool sync_output_directory, 
-                const bool write_manifest);
+                const bool write_manifest,
+                Env::Priority thread_pri);
 
      ~NvmFlushJob();
      // Require db_mutex held.
@@ -144,8 +145,7 @@ private:
     bool pick_memtable_called;
 
     NvmCfModule *nvm_cf_;
-
-
+    Env::Priority thread_pri_;
 };
 
 

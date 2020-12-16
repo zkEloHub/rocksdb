@@ -1358,9 +1358,9 @@ Status CompactionJob::FinishCompactionOutputFile(
         std::make_shared<TableProperties>(tp);
     ROCKS_LOG_INFO(db_options_.info_log,
                    "[%s] [JOB %d] Generated table #%" PRIu64 ": %" PRIu64
-                   " keys, %" PRIu64 " bytes [%s-%s]",
+                   " keys, %" PRIu64 " bytes [%s-%s] %s",
                    cfd->GetName().c_str(), job_id_, output_number,
-                   current_entries, current_bytes,meta->smallest.DebugString(true).c_str(), meta->largest.DebugString(true).c_str(),
+                   current_entries, current_bytes, meta->smallest.DebugString(true).c_str(), meta->largest.DebugString(true).c_str(),
                    meta->marked_for_compaction ? " (need compaction)" : "");
   }
   std::string fname;

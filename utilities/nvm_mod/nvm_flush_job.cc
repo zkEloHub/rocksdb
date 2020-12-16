@@ -28,20 +28,20 @@
 #include "rocksdb/statistics.h"
 #include "rocksdb/status.h"
 #include "rocksdb/table.h"
-#include "table/block.h"
-#include "table/block_based_table_factory.h"
+#include "table/block_based/block.h"
+#include "table/block_based/block_based_table_factory.h"
 #include "table/merging_iterator.h"
 #include "table/table_builder.h"
 #include "table/two_level_iterator.h"
 #include "util/coding.h"
-#include "util/event_logger.h"
-#include "util/file_util.h"
-#include "util/filename.h"
-#include "util/log_buffer.h"
-#include "util/logging.h"
+#include "logging/event_logger.h"
+#include "file/file_util.h"
+#include "file/filename.h"
+#include "logging/log_buffer.h"
+#include "logging/logging.h"
 #include "util/mutexlock.h"
 #include "util/stop_watch.h"
-#include "util/sync_point.h"
+#include "test_util/sync_point.h"
 
 namespace rocksdb {
 
@@ -97,7 +97,8 @@ NvmFlushJob::NvmFlushJob(const std::string& dbname,
             EventLogger* event_logger, 
             bool measure_io_stats,
             const bool sync_output_directory, 
-            const bool write_manifest)
+            const bool write_manifest,
+            Env::Priority thread_pri)
     :dbname_(dbname),
     cfd_(cfd),
     db_options_(db_options),
@@ -122,15 +123,14 @@ NvmFlushJob::NvmFlushJob(const std::string& dbname,
     write_manifest_(write_manifest),
     edit_(nullptr),
     base_(nullptr),
-    pick_memtable_called(false) {
+    pick_memtable_called(false),
+    thread_pri_(thread_pri) {
 
         nvm_cf_ = cfd_->nvmcfmodule;
         assert(nvm_cf_ != nullptr);
         ReportStartedFlush();
-
-
-
 }
+
 NvmFlushJob::~NvmFlushJob() {
   ThreadStatusUtil::ResetThreadStatus();
 }
@@ -411,8 +411,8 @@ Status NvmFlushJob::WriteLevel0Table() {
   InternalStats::CompactionStats stats(CompactionReason::kFlush, 1);
   stats.micros = db_options_.env->NowMicros() - start_micros;
   stats.bytes_written = meta_.fd.GetFileSize();
-  MeasureTime(stats_, FLUSH_TIME, stats.micros);
-  cfd_->internal_stats()->AddCompactionStats(0 /* level */, stats);
+  RecordInHistogram(stats_, FLUSH_TIME, stats.micros);
+  cfd_->internal_stats()->AddCompactionStats(0 /* level */, thread_pri_, stats);
   cfd_->internal_stats()->AddCFStats(InternalStats::BYTES_FLUSHED,
                                      meta_.fd.GetFileSize());
   RecordFlushIOStats();
