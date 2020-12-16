@@ -193,7 +193,7 @@ Compaction* FIFOCompactionPicker::PickSizeCompaction(
 
 Compaction* FIFOCompactionPicker::PickCompaction(
     const std::string& cf_name, const MutableCFOptions& mutable_cf_options,
-    VersionStorageInfo* vstorage, LogBuffer* log_buffer) {
+    VersionStorageInfo* vstorage, LogBuffer* log_buffer,bool /*for_column_compaction*/,NvmCfModule* /*nvmcf*/) {
   assert(vstorage->num_levels() == 1);
 
   Compaction* c = nullptr;

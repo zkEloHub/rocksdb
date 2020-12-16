@@ -83,6 +83,8 @@ struct ImmutableDBOptions {
   bool avoid_unnecessary_blocking_io;
   bool persist_stats_to_disk;
   size_t log_readahead_size;
+
+  std::shared_ptr<NvmSetup> nvm_setup = nullptr;
 };
 
 struct MutableDBOptions {

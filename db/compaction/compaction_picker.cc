@@ -23,6 +23,8 @@
 #include "util/random.h"
 #include "util/string_util.h"
 
+#include "utilities/nvm_mod/global_statistic.h"
+
 namespace rocksdb {
 
 namespace {
@@ -141,6 +143,10 @@ void CompactionPicker::ReleaseCompactionFiles(Compaction* c, Status status) {
   if (!status.ok()) {
     c->ResetNextCompactionIndex();
   }
+}
+void CompactionPicker::GetRange(InternalKey* smallest, InternalKey* largest, InternalKey* smallest1, InternalKey* largest1, InternalKey* smallest2, InternalKey* largest2) const{
+  *smallest = icmp_->Compare(*smallest1, *smallest2) < 0 ? *smallest1 : *smallest2;
+  *largest = icmp_->Compare(*largest1, *largest2) < 0 ? *largest2 : *largest1;
 }
 
 void CompactionPicker::GetRange(const CompactionInputFiles& inputs,

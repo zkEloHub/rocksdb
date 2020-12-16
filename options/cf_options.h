@@ -122,6 +122,8 @@ struct ImmutableCFOptions {
   std::vector<DbPath> cf_paths;
 
   std::shared_ptr<ConcurrentTaskLimiter> compaction_thread_limiter;
+
+  std::shared_ptr<NvmCfOptions> nvm_cf_options = nullptr;
 };
 
 struct MutableCFOptions {

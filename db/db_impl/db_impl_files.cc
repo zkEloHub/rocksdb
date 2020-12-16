@@ -254,12 +254,23 @@ bool CompareCandidateFile(const JobContext::CandidateFileInfo& first,
 // Delete obsolete files and log status and information of file deletion
 void DBImpl::DeleteObsoleteFileImpl(int job_id, const std::string& fname,
                                     const std::string& path_to_sync,
-                                    FileType type, uint64_t number) {
+                                    FileType type, uint64_t number,std::vector<NvmCfModule*> *nvmcfs) {
   Status file_deletion_status;
   if (type == kTableFile || type == kLogFile) {
-    file_deletion_status =
+    bool deleted = false;
+    for(unsigned int i = 0;i < nvmcfs->size();i++){
+      if(nvmcfs->at(i)->FindFile(number,true,false) != nullptr){
+        nvmcfs->at(i)->DeleteL0file(number);
+        deleted = true;
+        file_deletion_status = Status::OK();
+        break;
+      }
+      if (!deleted) {
+        file_deletion_status =
         DeleteDBFile(&immutable_db_options_, fname, path_to_sync,
                      /*force_bg=*/false, /*force_fg=*/!wal_in_db_path_);
+      }
+    }
   } else {
     file_deletion_status = env_->DeleteFile(fname);
   }
@@ -318,6 +329,20 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
   // We may ignore the dbname when generating the file names.
   const char* kDumbDbName = "";
   for (auto& file : state.sst_delete_files) {
+    if ( file.nvmcf != nullptr) {
+      std::vector<NvmCfModule*>::iterator it = state.nvmcfs.begin();
+      bool find_nvmcf = false;
+      for (; it != state.nvmcfs.end(); it++){
+        if((*it) == file.nvmcf) {
+          find_nvmcf = true;
+          break;
+        }
+      }
+      if(!find_nvmcf){
+        state.nvmcfs.push_back(file.nvmcf);
+        //printf("nvmcfs push:%ld \n",file.metadata->fd.GetNumber());
+      }
+    }
     candidate_files.emplace_back(
         MakeTableFileName(kDumbDbName, file.metadata->fd.GetNumber()),
         file.path);
@@ -489,7 +514,7 @@ void DBImpl::PurgeObsoleteFiles(JobContext& state, bool schedule_only) {
       InstrumentedMutexLock guard_lock(&mutex_);
       SchedulePendingPurge(fname, dir_to_sync, type, number, state.job_id);
     } else {
-      DeleteObsoleteFileImpl(state.job_id, fname, dir_to_sync, type, number);
+      DeleteObsoleteFileImpl(state.job_id, fname, dir_to_sync, type, number,&state.nvmcfs);
     }
   }
 

@@ -58,6 +58,8 @@
 #include "util/stop_watch.h"
 #include "util/string_util.h"
 
+#include "utilities/nvm_mod/global_statistic.h"
+
 namespace rocksdb {
 
 const char* GetCompactionReasonString(CompactionReason compaction_reason) {
@@ -715,10 +717,14 @@ Status CompactionJob::Install(const MutableCFOptions& mutable_cf_options) {
   ColumnFamilyData* cfd = compact_->compaction->column_family_data();
   cfd->internal_stats()->AddCompactionStats(
       compact_->compaction->output_level(), thread_pri_, compaction_stats_);
-
+  RECORD_LOG("CompactionJob::Install start\n");
   if (status.ok()) {
     status = InstallCompactionResults(mutable_cf_options);
+    if(compact_->compaction->GetColumnCompactionItem() != nullptr){
+      compact_->compaction->InstallColumnCompactionItem();
+    }
   }
+  RECORD_LOG("CompactionJob::Install end\n");
   VersionStorageInfo::LevelSummaryStorage tmp;
   auto vstorage = cfd->current()->storage_info();
   const auto& stats = compaction_stats_;
@@ -742,6 +748,19 @@ Status CompactionJob::Install(const MutableCFOptions& mutable_cf_options) {
     bytes_written_per_sec =
         stats.bytes_written / static_cast<double>(stats.micros);
   }
+
+#ifdef STATISTIC_OPEN
+  if (compact_->compaction->GetColumnCompactionItem() == nullptr) {  //正常
+    uint64_t read_all = stats.bytes_read_non_output_levels + stats.bytes_read_output_level;
+    uint64_t start_time = get_now_micros() - stats.micros - global_stats.start_time;
+    RECORD_INFO(3,"%ld,%.2f,%.2f,%.5f,%.3f\n",++global_stats.compaction_num, 1.0*read_all/1048576.0,1.0*stats.bytes_written/1048576.0,1.0*stats.micros*1e-6,1.0*start_time*1e-6);
+  }
+  else{  //column compaction
+    uint64_t read_all = compact_->compaction->GetColumnCompactionItem()->L0select_size + stats.bytes_read_output_level;
+        uint64_t start_time = get_now_micros() - stats.micros - global_stats.start_time;
+    RECORD_INFO(3,"%ld,%.2f,%.2f,%.5f,%.3f,%d\n",++global_stats.compaction_num, 1.0*read_all/1048576.0,1.0*stats.bytes_written/1048576.0,1.0*stats.micros*1e-6,1.0*start_time*1e-6,true);
+  }
+#endif
 
   ROCKS_LOG_BUFFER(
       log_buffer_,
@@ -833,8 +852,21 @@ void CompactionJob::ProcessKeyValueCompaction(SubcompactionState* sub_compact) {
 
   // Although the v2 aggregator is what the level iterator(s) know about,
   // the AddTombstones calls will be propagated down to the v1 aggregator.
-  std::unique_ptr<InternalIterator> input(versions_->MakeInputIterator(
+  /*std::unique_ptr<InternalIterator> input(versions_->MakeInputIterator(
+      sub_compact->compaction, &range_del_agg, env_options_for_read_)); */
+
+  std::unique_ptr<InternalIterator> input = nullptr;
+  if(sub_compact->compaction->GetColumnCompactionItem() == nullptr){
+    input.reset(versions_->MakeInputIterator(
       sub_compact->compaction, &range_del_agg, env_options_for_read_));
+  }
+  else{  //column compaction
+    RECORD_LOG("column compaction job run\n");
+    log_buffer_->FlushBufferToLog();
+    input.reset(versions_->MakeColumnCompactionInputIterator(
+      sub_compact->compaction, &range_del_agg, env_options_for_read_));
+    RECORD_LOG("column compaction job MakeColumnCompactionInputIterator\n");
+  }
 
   AutoThreadOperationStageUpdater stage_updater(
       ThreadStatus::STAGE_COMPACTION_PROCESS_KV);
@@ -1326,9 +1358,9 @@ Status CompactionJob::FinishCompactionOutputFile(
         std::make_shared<TableProperties>(tp);
     ROCKS_LOG_INFO(db_options_.info_log,
                    "[%s] [JOB %d] Generated table #%" PRIu64 ": %" PRIu64
-                   " keys, %" PRIu64 " bytes%s",
+                   " keys, %" PRIu64 " bytes [%s-%s]",
                    cfd->GetName().c_str(), job_id_, output_number,
-                   current_entries, current_bytes,
+                   current_entries, current_bytes,meta->smallest.DebugString(true).c_str(), meta->largest.DebugString(true).c_str(),
                    meta->marked_for_compaction ? " (need compaction)" : "");
   }
   std::string fname;
@@ -1588,6 +1620,14 @@ void CompactionJob::UpdateCompactionInputStatsHelper(int* num_files,
   auto num_input_files = compaction->num_input_files(input_level);
   *num_files += static_cast<int>(num_input_files);
 
+  if(compaction->GetColumnCompactionItem() != nullptr && input_level == 0) {
+    *bytes_read += compaction->GetColumnCompactionItem()->L0select_size;
+    for(unsigned int i = 0;i < compaction->GetColumnCompactionItem()->keys_num.size();i++){
+      compaction_stats_.num_input_records += compaction->GetColumnCompactionItem()->keys_num[i];
+    }
+    return;
+  }
+
   for (size_t i = 0; i < num_input_files; ++i) {
     const auto* file_meta = compaction->input(input_level, i);
     *bytes_read += file_meta->fd.GetFileSize();
@@ -1639,10 +1679,17 @@ void CompactionJob::LogCompaction() {
   // we're not logging
   if (db_options_.info_log_level <= InfoLogLevel::INFO_LEVEL) {
     Compaction::InputLevelSummaryBuffer inputs_summary;
+#ifdef STATISTIC_OPEN
+    ROCKS_LOG_INFO(
+        db_options_.info_log, "[%s] [JOB %d] %ld Compacting %s, score %.2f",
+        cfd->GetName().c_str(), job_id_,global_stats.compaction_num + 1,
+        compaction->InputLevelSummary(&inputs_summary), compaction->score());
+#else
     ROCKS_LOG_INFO(
         db_options_.info_log, "[%s] [JOB %d] Compacting %s, score %.2f",
         cfd->GetName().c_str(), job_id_,
         compaction->InputLevelSummary(&inputs_summary), compaction->score());
+#endif
     char scratch[2345];
     compaction->Summary(scratch, sizeof(scratch));
     ROCKS_LOG_INFO(db_options_.info_log, "[%s] Compaction start summary: %s\n",

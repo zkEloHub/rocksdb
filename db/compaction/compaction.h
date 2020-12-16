@@ -13,6 +13,9 @@
 #include "options/cf_options.h"
 #include "util/autovector.h"
 
+#include "utilities/nvm_mod/column_compaction.h"
+#include "utilities/nvm_mod/nvm_cf_mod.h"
+
 namespace rocksdb {
 // The file contains class Compaction, as well as some helper functions
 // and data structures used by the class.
@@ -78,7 +81,7 @@ class Compaction {
              std::vector<FileMetaData*> grandparents,
              bool manual_compaction = false, double score = -1,
              bool deletion_compaction = false,
-             CompactionReason compaction_reason = CompactionReason::kUnknown);
+             CompactionReason compaction_reason = CompactionReason::kUnknown,ColumnCompactionItem* ccitem = nullptr);
 
   // No copying allowed
   Compaction(const Compaction&) = delete;
@@ -292,6 +295,10 @@ class Compaction {
   uint32_t max_subcompactions() const { return max_subcompactions_; }
 
   uint64_t MaxInputFileCreationTime() const;
+///
+  ColumnCompactionItem* GetColumnCompactionItem() const { return ccitem_; };
+  void InstallColumnCompactionItem();
+///
 
  private:
   // mark (or clear) all files that are being compacted
@@ -376,6 +383,11 @@ class Compaction {
 
   // Reason for compaction
   CompactionReason compaction_reason_;
+
+  ///
+  ColumnCompactionItem* ccitem_;
+  std::vector<uint64_t> column_compaction_delete_file_;
+///
 };
 
 // Return sum of sizes of all files in `files`.

@@ -418,6 +418,10 @@ class VersionStorageInfo {
                                      const Slice& largest_user_key,
                                      int last_level, int last_l0_idx);
 
+///
+  bool is_nvmcf;
+///
+
  private:
   const InternalKeyComparator* internal_comparator_;
   const Comparator* user_comparator_;
@@ -724,10 +728,11 @@ class Version {
 struct ObsoleteFileInfo {
   FileMetaData* metadata;
   std::string   path;
+  NvmCfModule* nvmcf = nullptr;
 
   ObsoleteFileInfo() noexcept : metadata(nullptr) {}
-  ObsoleteFileInfo(FileMetaData* f, const std::string& file_path)
-      : metadata(f), path(file_path) {}
+  ObsoleteFileInfo(FileMetaData* f, const std::string& file_path, NvmCfModule* nvmcfm = nullptr)
+      : metadata(f), path(file_path), nvmcf(nvmcfm) {}
 
   ObsoleteFileInfo(const ObsoleteFileInfo&) = delete;
   ObsoleteFileInfo& operator=(const ObsoleteFileInfo&) = delete;
@@ -740,7 +745,9 @@ struct ObsoleteFileInfo {
   ObsoleteFileInfo& operator=(ObsoleteFileInfo&& rhs) noexcept {
     path = std::move(rhs.path);
     metadata = rhs.metadata;
+    nvmcf = rhs.nvmcf;
     rhs.metadata = nullptr;
+    rhs.nvmcf = nullptr;
 
     return *this;
   }
@@ -976,6 +983,12 @@ class VersionSet {
   InternalIterator* MakeInputIterator(
       const Compaction* c, RangeDelAggregator* range_del_agg,
       const EnvOptions& env_options_compactions);
+
+///
+  InternalIterator* MakeColumnCompactionInputIterator(
+      const Compaction* c, RangeDelAggregator* range_del_agg,
+      const EnvOptions& env_options_compactions);
+///
 
   // Add all files listed in any live version to *live.
   void AddLiveFiles(std::vector<FileDescriptor>* live_list);
