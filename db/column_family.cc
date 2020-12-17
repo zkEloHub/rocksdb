@@ -974,7 +974,15 @@ void ColumnFamilyData::CreateNewMemtable(
 }
 
 bool ColumnFamilyData::NeedsCompaction() const {
-  ///
+  if(NeedsColumnCompaction()){
+    return true;
+  }
+  else{
+    return compaction_picker_->NeedsCompaction(current_->storage_info());
+  }
+}
+///
+bool ColumnFamilyData::NeedsColumnCompaction() const{
   if (nvmcfmodule == nullptr) return false;
   if(bg_column_compaction_){   //暂时只允许一个column compaction
     return false;
@@ -986,6 +994,16 @@ bool ColumnFamilyData::NeedsCompaction() const {
   else{  //可及时将L0往下刷
     return vstorage->NumLevelFiles(0) >= mutable_cf_options_.level0_file_num_compaction_trigger;
   }
+  /* for (int i = 0; i <= vstorage->MaxInputLevel(); i++) {
+    if (vstorage->CompactionScoreLevel(i) == 0) continue;  //L0层只能column compaction
+
+    if (vstorage->CompactionScore(i) >= Beyond_this_delay_column_compaction) {   //除了L0层外的其它层超过Beyond_this_delay_column_compaction，优先compaction
+      return false;
+    }
+  }*/
+  //bool need = nvmcfmodule->NeedsColumnCompaction();
+  //return vstorage->NumLevelBytes(0) >= Level0_column_compaction_trigger_size;   //L0层达到可column compaction条件
+
 }
 
 ///
