@@ -1283,6 +1283,10 @@ Status DBImpl::Open(const DBOptions& db_options, const std::string& dbname,
                     const std::vector<ColumnFamilyDescriptor>& column_families,
                     std::vector<ColumnFamilyHandle*>* handles, DB** dbptr,
                     const bool seq_per_batch, const bool batch_per_txn) {
+  // TODO: delete 
+  if (db_options.nvm_setup != nullptr) {
+    printf("[INFO]: exec with nvm \n");
+  }
   Status s = SanitizeOptionsByTable(db_options, column_families);
   if (!s.ok()) {
     return s;
