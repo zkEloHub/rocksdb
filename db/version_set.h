@@ -753,7 +753,9 @@ struct ObsoleteFileInfo {
   }
 
   void DeleteMetadata() {
-    delete metadata;
+    if (metadata != nullptr) {
+      delete metadata;
+    }
     metadata = nullptr;
   }
 };

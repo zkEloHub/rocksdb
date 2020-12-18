@@ -7,7 +7,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
-#ifdef GFLAGS
+// #ifdef GFLAGS
 #ifdef NUMA
 #include <numa.h>
 #include <numaif.h>
@@ -191,6 +191,15 @@ DEFINE_string(
     "\tsstables    -- Print sstable info\n"
     "\theapprofile -- Dump a heap profile (if supported by this port)\n"
     "\treplay      -- replay the trace file specified with trace_file\n");
+
+// 定义 nvm flag
+DEFINE_bool(use_nvm_module, false, "是否启用 nvm");
+DEFINE_string(pmem_path,"","nvm 挂载路径");
+
+// L0 层 trigger, slowdown, stop 的大小(阈值)
+DEFINE_uint64(level0_column_compaction_trigger_size, rocksdb::NvmSetup().Level0_column_compaction_trigger_size, "");
+DEFINE_uint64(level0_column_compaction_slowdown_size, rocksdb::NvmSetup().Level0_column_compaction_slowdown_size, "");
+DEFINE_uint64(level0_column_compaction_stop_size, rocksdb::NvmSetup().Level0_column_compaction_stop_size, "");
 
 DEFINE_int64(num, 1000000, "Number of key/values to place in database");
 
@@ -3793,6 +3802,20 @@ class Benchmark {
           FLAGS_rate_limiter_auto_tuned));
     }
 
+    if (FLAGS_use_nvm_module && options.nvm_setup == nullptr) {
+      auto nvm_setup = new NvmSetup();
+      nvm_setup->use_nvm_module = FLAGS_use_nvm_module;
+      //nvm_setup->reset_nvm_storage = FLAGS_reset_nvm_storage;
+      nvm_setup->pmem_path = FLAGS_pmem_path;
+      //nvm_setup->pmem_size = FLAGS_pmem_size;
+      nvm_setup->Level0_column_compaction_trigger_size = FLAGS_level0_column_compaction_trigger_size;
+      nvm_setup->Level0_column_compaction_slowdown_size = FLAGS_level0_column_compaction_slowdown_size;
+      nvm_setup->Level0_column_compaction_stop_size = FLAGS_level0_column_compaction_stop_size;
+
+      
+      options.nvm_setup.reset(nvm_setup);
+    }
+
     options.listeners.emplace_back(listener_);
     if (FLAGS_num_multi_db <= 1) {
       OpenDb(options, FLAGS_db, &db_);
@@ -6479,4 +6502,4 @@ int db_bench_tool(int argc, char** argv) {
   return 0;
 }
 }  // namespace rocksdb
-#endif
+// #endif

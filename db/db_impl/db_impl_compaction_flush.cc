@@ -2687,7 +2687,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
       // compaction is not necessary. Need to make sure mutex is held
       // until we make a copy in the following code
       TEST_SYNC_POINT("DBImpl::BackgroundCompaction():BeforePickCompaction");
-      c.reset(cfd->PickCompaction(*mutable_cf_options, log_buffer));
+      c.reset(cfd->PickCompaction(*mutable_cf_options, log_buffer,is_column_compaction,cfd->nvmcfmodule));
       TEST_SYNC_POINT("DBImpl::BackgroundCompaction():AfterPickCompaction");
       if(is_column_compaction && c == nullptr) {  //column comapction pick failed!
         cfd->set_bg_column_compaction(false);

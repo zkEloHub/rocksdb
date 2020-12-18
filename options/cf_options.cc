@@ -73,7 +73,11 @@ ImmutableCFOptions::ImmutableCFOptions(const ImmutableDBOptions& db_options,
       memtable_insert_with_hint_prefix_extractor(
           cf_options.memtable_insert_with_hint_prefix_extractor.get()),
       cf_paths(cf_options.cf_paths),
-      compaction_thread_limiter(cf_options.compaction_thread_limiter) {}
+      compaction_thread_limiter(cf_options.compaction_thread_limiter) {
+        if(db_options.nvm_setup != nullptr){
+          nvm_cf_options = std::make_shared<NvmCfOptions>(db_options.nvm_setup,cf_options.write_buffer_size,cf_options.max_write_buffer_number,cf_options.level0_stop_writes_trigger,cf_options.target_file_size_base);
+        }
+      }
 
 // Multiple two operands. If they overflow, return op1.
 uint64_t MultiplyCheckOverflow(uint64_t op1, double op2) {
