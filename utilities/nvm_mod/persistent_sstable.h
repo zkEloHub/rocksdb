@@ -20,7 +20,7 @@ class PersistentSstable {
     char* pmemaddr=nullptr;
     size_t mapped_len;
     int is_pmem;
-    uint64_t total_size = each_size * number;
+    uint64_t total_size = each_size * number;   // byte
 
     bool file_exist = false;
     if(nvm_file_exists(path.c_str()) == 0) { //文件存在
@@ -99,13 +99,13 @@ class PersistentSstable {
 
 
  private:
-  char* raw_;
-  BitMap* bitmap_;
+  char* raw_;           // pmem
+  BitMap* bitmap_;      // BitMap(number)
   size_t mapped_len_;
   int is_pmem_;
-  uint64_t total_size_;
-  uint64_t each_size_;
-  uint64_t num_;
+  uint64_t total_size_; // each_size_ * num_:  72M * 256 = 18G
+  uint64_t each_size_;  // write buffer size + 8M:  64 + 8
+  uint64_t num_;        // L0 table number: 256
   uint64_t use_num_;
 };
 

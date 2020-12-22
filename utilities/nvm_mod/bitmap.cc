@@ -4,7 +4,7 @@
 namespace rocksdb {
     BitMap::BitMap() {
         //default 10000
-        gsize = (10000 >> 3) + 1;
+        gsize = (10000 >> 3) + 1;   // 1251
         bitmap = new char[gsize];
         memset(bitmap, 0, gsize);
     }

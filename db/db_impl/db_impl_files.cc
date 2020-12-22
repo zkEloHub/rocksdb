@@ -256,7 +256,8 @@ void DBImpl::DeleteObsoleteFileImpl(int job_id, const std::string& fname,
                                     const std::string& path_to_sync,
                                     FileType type, uint64_t number,std::vector<NvmCfModule*> *nvmcfs) {
   Status file_deletion_status;
-  if (type == kTableFile || type == kLogFile) {
+  // if (type == kTableFile || type == kLogFile) {
+  if (type == kTableFile) {
     bool deleted = false;
     for(unsigned int i = 0;i < nvmcfs->size();i++){
       if(nvmcfs->at(i)->FindFile(number,true,false) != nullptr){

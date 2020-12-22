@@ -19,6 +19,8 @@ NvmCfModule::NvmCfModule(NvmCfOptions* nvmcfoption, const std::string& cf_name,
   if(nvm_file_exists(pol_path.c_str()) == 0) { //文件存在
     open_by_creat_ = false;
   }
+  // buffer size: 64M
+  // stop_size: 8192M
   uint64_t level0_table_num = (nvmcfoption_->Level0_column_compaction_stop_size/nvmcfoption_->write_buffer_size + 1)*2;
   ptr_sst_ = new PersistentSstable(pol_path,nvmcfoption_->write_buffer_size + 8ul * 1024 * 1024,
             level0_table_num);
@@ -41,7 +43,10 @@ bool NvmCfModule::AddL0TableRoom(uint64_t filenum, char** raw,
   char* tmp = nullptr;
   tmp = ptr_sst_->AllocSstable(index);
   if (index == -1 || tmp == nullptr) {
-    printf("error:AddL0TableRoom AllocSstable error!\n");
+    printf(
+        "error:AddL0TableRoom AllocSstable error!, num_: %llu, used num: "
+        "%llu\n",
+        ptr_sst_->GetNum(), ptr_sst_->GetUseNum());
     return false;
   }
   *raw = tmp;
