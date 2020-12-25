@@ -39,6 +39,7 @@ void NvmCfModule::Delete() {}
 
 bool NvmCfModule::AddL0TableRoom(uint64_t filenum, char** raw,
                     FileEntry** file) {
+  if ((int)ptr_sst_->GetNum() <= (int)ptr_sst_->GetUseNum()) return false;
   int index = -1;
   char* tmp = nullptr;
   tmp = ptr_sst_->AllocSstable(index);
@@ -58,7 +59,7 @@ bool NvmCfModule::AddL0TableRoom(uint64_t filenum, char** raw,
   } else {
     *file = filetmp;
   }
-  RECORD_LOG("nvmpath: %s, cf_id: %ld, cf_name: %s ;add L0 table:%lu index:%d\n", GetNvmCfOptions()->pmem_path, GetCfId(), GetCfName().c_str(), filenum,index);
+  RECORD_LOG("nvm_path: %s, cf_id: %ld, cf_name: %s ;add L0 table:%lu index:%d\n", GetNvmCfOptions()->pmem_path.c_str(), GetCfId(), GetCfName().c_str(), filenum,index);
   return true;
 }
 
