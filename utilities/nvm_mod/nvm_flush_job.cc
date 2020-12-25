@@ -475,7 +475,10 @@ Status NvmFlushJob::BuildInsertNvm(InternalIterator *iter,
     //}*/
     FileEntry* file = nullptr;
     char* raw = nullptr;
-    nvm_cf_->AddL0TableRoom(meta_.fd.GetNumber(),&raw,&file);
+    bool ret = nvm_cf_->AddL0TableRoom(meta_.fd.GetNumber(),&raw,&file);
+    if (!ret) {
+      s = Status::NoSpace();
+    }
     //L0TableBuilder* L0builder = new L0TableBuilder(nvm_cf_,file,raw);
     L0TableBuilderWithBuffer* L0builder = new L0TableBuilderWithBuffer(nvm_cf_,file,raw);
 
@@ -691,7 +694,11 @@ Status BuildTableInsertNVM(
 
     FileEntry* file = nullptr;
     char* raw = nullptr;
-    nvm_cf_->AddL0TableRoom(meta->fd.GetNumber(),&raw,&file);
+    bool ret = nvm_cf_->AddL0TableRoom(meta->fd.GetNumber(),&raw,&file);
+    if (!ret) {
+      s = Status::NoSpace();
+    }
+
     //L0TableBuilder* L0builder = new L0TableBuilder(nvm_cf_,file,raw);
     L0TableBuilderWithBuffer* L0builder = new L0TableBuilderWithBuffer(nvm_cf_,file,raw);
     
@@ -754,7 +761,7 @@ Status BuildTableInsertNVM(
     } */
 
     if (!s.ok() || empty) {
-      printf("error:abandon L0builder\n");
+      printf("error:abandon L0builder 2\n");
     } else {
       s = L0builder->Finish();
     }
