@@ -68,7 +68,7 @@ Status L0TableBuilder::Finish(){
 ///key元数据是否加入sstable
 ///更新keys的next
     nvm_cf_->UpdateKeyNext(file_);
-    RECORD_LOG("finish L0 table:%lu keynum:%lu size:%2.f MB\n",file_->filenum,file_->keys_num,1.0*offset_/1048576);
+    RECORD_LOG("nvm_path: %s, cf_id: %ld, cf_name: %s ;finish L0 table:%lu keynum:%lu size:%2.f MB\n", nvm_cf_->GetNvmCfOptions()->pmem_path.c_str(), nvm_cf_->GetCfId(), nvm_cf_->GetCfName().c_str(), file_->filenum,file_->keys_num,1.0*offset_/1048576);
 
     
 return Status();
@@ -111,6 +111,7 @@ void L0TableBuilderWithBuffer::Add(const Slice& key, const Slice& value){
         printf("error:write l0 sstable size over!\n");
         return;
     }
+    // printf("[ADD]: add key_size: %d, value_size: %d \n", key.size(), value.size());
     std::string key_value;
     PutFixed64(&key_value, key.size_);
     key_value.append(key.data_, key.size_);
@@ -171,7 +172,7 @@ Status L0TableBuilderWithBuffer::Finish(){
 
     //memcpy(raw_ + offset_,metadatas.c_str(),metadatas.size());
     pmem_memcpy_persist(raw_ , buf_, offset_ + keys_meta_size_);  //libpmem api
-    RECORD_LOG("finish L0 table:%lu keynum:%lu size:%.2f MB metadata:%.2f MB\n",file_->filenum,file_->keys_num,1.0*offset_/1048576,metadatas.size()/1048576.0);
+    RECORD_LOG("nvm_path: %s, cf_id: %ld, cf_name: %s ;finish L0 table:%lu keynum:%lu size:%.2f MB metadata:%.2f MB\n", nvm_cf_->GetNvmCfOptions()->pmem_path.c_str(), nvm_cf_->GetCfId(), nvm_cf_->GetCfName().c_str(), file_->filenum,file_->keys_num,1.0*offset_/1048576,metadatas.size()/1048576.0);
     /* std::string buf;
     int32_t a = -1;
     PutFixed32(&buf,a);

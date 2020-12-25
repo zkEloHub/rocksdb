@@ -105,7 +105,7 @@ class PersistentSstable {
   int is_pmem_;
   uint64_t total_size_; // each_size_ * num_:  72M * 256 = 18G
   uint64_t each_size_;  // write buffer size + 8M:  64 + 8
-  uint64_t num_;        // L0 table number: 256
+  uint64_t num_;        // L0 table number: 256:  (Level0_column_compaction_stop_size / write_buffer_size + 1) * 2
   uint64_t use_num_;
 };
 

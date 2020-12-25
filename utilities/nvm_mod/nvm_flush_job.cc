@@ -496,7 +496,7 @@ Status NvmFlushJob::BuildInsertNvm(InternalIterator *iter,
       const Slice& key = c_iter.key();
       const Slice& value = c_iter.value();
       //builder->Add(key, value);
-      L0builder->Add(key,value);
+      L0builder->Add(key, value);
       
       number_entry++;
       meta_.UpdateBoundaries(key, c_iter.ikey().sequence);

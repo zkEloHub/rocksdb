@@ -8,7 +8,7 @@ namespace rocksdb {
 
 NvmCfModule::NvmCfModule(NvmCfOptions* nvmcfoption, const std::string& cf_name,
                          uint32_t cf_id, const InternalKeyComparator* icmp)
-    : nvmcfoption_(nvmcfoption),open_by_creat_(true),icmp_(icmp) {
+    : nvmcfoption_(nvmcfoption),open_by_creat_(true),icmp_(icmp), cf_name_(cf_name), cf_id_(cf_id) {
   
   nvm_dir_no_exists_and_creat(nvmcfoption_->pmem_path);
   char buf[100];
@@ -58,7 +58,7 @@ bool NvmCfModule::AddL0TableRoom(uint64_t filenum, char** raw,
   } else {
     *file = filetmp;
   }
-  RECORD_LOG("add L0 table:%lu index:%d\n",filenum,index);
+  RECORD_LOG("nvmpath: %s, cf_id: %ld, cf_name: %s ;add L0 table:%lu index:%d\n", GetNvmCfOptions()->pmem_path, GetCfId(), GetCfName().c_str(), filenum,index);
   return true;
 }
 

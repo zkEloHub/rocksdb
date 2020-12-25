@@ -2184,7 +2184,7 @@ void DBImpl::SchedulePendingFlush(const FlushRequest& flush_req,
   unscheduled_flushes_ += static_cast<int>(flush_req.size());
   flush_queue_.push_back(flush_req);
 }
-
+// cfd.current_.storage_info_
 void DBImpl::SchedulePendingCompaction(ColumnFamilyData* cfd) {
   if (!cfd->queued_for_compaction() && cfd->NeedsCompaction()) {
     AddToCompactionQueue(cfd);
@@ -2640,7 +2640,6 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
       }
     }
   } else if (!is_prepicked && !compaction_queue_.empty()) {
-    // TODO: 未调用
     if (HasExclusiveManualCompaction()) {
       // Can't compact right now, but try again later
       TEST_SYNC_POINT("DBImpl::BackgroundCompaction()::Conflict");

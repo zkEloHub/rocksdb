@@ -53,6 +53,9 @@ class NvmCfModule {
 
   const NvmCfOptions* GetNvmCfOptions() { return nvmcfoption_; }
 
+  std::string GetCfName() const { return cf_name_; }
+  uint32_t GetCfId() const { return cf_id_; }
+
 
  private:
   bool UserKeyInRange(Slice *user_key,InternalKey *start,InternalKey *end);
@@ -67,6 +70,9 @@ class NvmCfModule {
   bool open_by_creat_;
   
   const InternalKeyComparator* icmp_;
+
+  std::string cf_name_;
+  uint32_t cf_id_;
 
 };
 
