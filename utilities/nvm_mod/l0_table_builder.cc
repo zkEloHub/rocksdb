@@ -172,21 +172,13 @@ Status L0TableBuilderWithBuffer::Finish(){
 
     //memcpy(raw_ + offset_,metadatas.c_str(),metadatas.size());
     pmem_memcpy_persist(raw_ , buf_, offset_ + keys_meta_size_);  //libpmem api
-    RECORD_LOG("nvm_path: %s, cf_id: %ld, cf_name: %s ;finish L0 table:%lu keynum:%lu size:%.2f MB metadata:%.2f MB\n", nvm_cf_->GetNvmCfOptions()->pmem_path.c_str(), nvm_cf_->GetCfId(), nvm_cf_->GetCfName().c_str(), file_->filenum,file_->keys_num,1.0*offset_/1048576,metadatas.size()/1048576.0);
-    /* std::string buf;
-    int32_t a = -1;
-    PutFixed32(&buf,a);
-    printf("buf:%s   \n",buf.c_str());
-    int32_t b = 0;
-    b = DecodeFixed32(buf.c_str());
-    printf("b:%d   \n",b);*/
+    RECORD_LOG(
+        "nvm_path: %s, cf_id: %ld, cf_name: %s ;finish L0 table:%lu keynum:%lu "
+        "size:%.2f MB metadata:%.2f MB\n",
+        nvm_cf_->GetNvmCfOptions()->pmem_path.c_str(), nvm_cf_->GetCfId(),
+        nvm_cf_->GetCfName().c_str(), file_->filenum, file_->keys_num,
+        1.0 * offset_ / 1048576, metadatas.size() / 1048576.0);
 
-    
-return Status();
-
+    return Status();
 }
-
-
-
-
 }
