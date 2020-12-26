@@ -1,5 +1,6 @@
 #include "my_log.h"
 namespace rocksdb {
+std::string log_file0;
 void init_log_file() {
   FILE* fp;
 #ifdef LZW_INFO
@@ -72,6 +73,12 @@ void LZW_LOG(int file_num, const char* format, ...) {
   if (fp == nullptr) printf("log failed\n");
   fprintf(fp, "%s", buf);
   fclose(fp);
+}
+
+void init_nvm_log(const std::string& pmem_path)
+{
+  std::size_t found = pmem_path.find_last_of("/");
+  log_file0 = pmem_path.substr(found+1) + "NVM_LOG";
 }
 
 }  // namespace rocksdb

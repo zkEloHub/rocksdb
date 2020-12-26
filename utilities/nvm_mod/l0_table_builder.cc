@@ -162,7 +162,7 @@ Status L0TableBuilderWithBuffer::Finish(){
         PutFixed64(&metadatas,file_->keys_meta[i].size);
     }
     if((offset_ + metadatas.size()) > max_size_){
-        printf("error:write l0 sstable's metadata size over!size:%lu max:%lu\n",offset_ + metadatas.size(),max_size_);
+        RECORD_LOG("error:write l0 sstable's metadata size over!size:%lu max:%lu\n",offset_ + metadatas.size(),max_size_);
         return Status::IOError();
     }
 

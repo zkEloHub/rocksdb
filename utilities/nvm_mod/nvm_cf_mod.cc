@@ -43,10 +43,8 @@ bool NvmCfModule::AddL0TableRoom(uint64_t filenum, char** raw,
   char* tmp = nullptr;
   tmp = ptr_sst_->AllocSstable(index);
   if (index == -1 || tmp == nullptr) {
-    printf(
-        "error:AddL0TableRoom AllocSstable error!, num_: %d, used num: "
-        "%d\n",
-        (int)ptr_sst_->GetNum(), (int)ptr_sst_->GetUseNum());
+    RECORD_LOG("error:AddL0TableRoom AllocSstable error!, num_: %lu, used num: "
+        "%lu\n",ptr_sst_->GetNum(), ptr_sst_->GetUseNum());
     return false;
   }
   *raw = tmp;

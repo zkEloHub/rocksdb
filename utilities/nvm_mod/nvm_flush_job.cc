@@ -475,7 +475,11 @@ Status NvmFlushJob::BuildInsertNvm(InternalIterator *iter,
     //}*/
     FileEntry* file = nullptr;
     char* raw = nullptr;
-    nvm_cf_->AddL0TableRoom(meta_.fd.GetNumber(),&raw,&file);
+    bool ret = nvm_cf_->AddL0TableRoom(meta_.fd.GetNumber(),&raw,&file);
+    if (!ret) {
+      s = Status::NoSpace();
+      return s;
+    }
     //L0TableBuilder* L0builder = new L0TableBuilder(nvm_cf_,file,raw);
     L0TableBuilderWithBuffer* L0builder = new L0TableBuilderWithBuffer(nvm_cf_,file,raw);
 

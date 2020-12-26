@@ -35,7 +35,7 @@ namespace rocksdb {
 #endif
 
 
-const std::string log_file0("NVM_LOG");
+// const std::string log_file0("NVM_LOG");
 const std::string log_file1("OP_TIME.csv");
 const std::string log_file2("OP_DATA");
 const std::string log_file3("compaction.csv");
@@ -47,6 +47,7 @@ extern void init_log_file();
 
 extern void LZW_LOG(int file_num,const char* format, ...);
 
+extern void init_nvm_log(const std::string& pmem_path);
 
 }
 
