@@ -989,7 +989,13 @@ bool ColumnFamilyData::NeedsColumnCompaction() const{
   }
   auto* vstorage = current_->storage_info();
   if(vstorage->NumLevelFiles(1) == 0){ //L1层为空
-    return vstorage->NumLevelBytes(0) >= nvmcfmodule->GetNvmCfOptions()->Level0_column_compaction_trigger_size;
+    bool ret = vstorage->NumLevelBytes(0) >= nvmcfmodule->GetNvmCfOptions()->Level0_column_compaction_trigger_size;
+    if (ret) {
+      RECORD_LOG("pmem_path: %s, cf_name: %s, cf_id: %lu ; got trigger size \n",
+                 nvmcfmodule->GetNvmCfOptions()->pmem_path.c_str(),
+                 nvmcfmodule->GetCfName().c_str(), nvmcfmodule->GetCfId());
+    }
+    return ret;
   }
   else{  //可及时将L0往下刷
     return vstorage->NumLevelFiles(0) >= mutable_cf_options_.level0_file_num_compaction_trigger;
