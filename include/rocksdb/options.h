@@ -324,6 +324,8 @@ struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
   explicit ColumnFamilyOptions(const Options& options);
 
   void Dump(Logger* log) const;
+
+  bool with_nvm = true;
 };
 
 enum class WALRecoveryMode : char {

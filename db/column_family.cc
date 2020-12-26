@@ -439,8 +439,8 @@ ColumnFamilyData::ColumnFamilyData(
       last_memtable_id_(0),
       bg_column_compaction_(false){
   Ref();
-
-  if(ioptions_.nvm_cf_options != nullptr && ioptions_.nvm_cf_options->use_nvm_module && name_.size() != 0){
+// p ((NvmCfOptions*)ioptions_.nvm_cf_options)->use_nvm_module
+  if(ioptions_.nvm_cf_options != nullptr && ioptions_.nvm_cf_options->use_nvm_module && name_.size() != 0 && cf_options.with_nvm) {
     nvmcfmodule = NewNvmCfModule(ioptions_.nvm_cf_options.get(),name,id,&ioptions_.internal_comparator);
   }
   // Convert user defined table properties collector factories to internal ones.

@@ -77,11 +77,14 @@ void LZW_LOG(int file_num, const char* format, ...) {
   fprintf(fp, "%s", buf);
   fclose(fp);
 }
-
+// /mnt/server_0/0
 void init_nvm_log(const std::string& pmem_path)
 {
   std::size_t found = pmem_path.find_last_of("/");
-  log_file0 = pmem_path.substr(found+1) + "NVM_LOG";
+  std::string str_next = pmem_path.substr(found + 1);
+  std::string str_pre = pmem_path.substr(0, found);
+  found = str_pre.find_last_of("/");
+  log_file0 = str_pre.substr(found + 1) + "_" + str_next + "_NVM_LOG";
 }
 
 }  // namespace rocksdb
