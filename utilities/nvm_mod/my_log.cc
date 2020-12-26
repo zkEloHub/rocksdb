@@ -48,6 +48,9 @@ void LZW_LOG(int file_num, const char* format, ...) {
   const std::string* log_file;
   switch (file_num) {
     case 0:
+      if (log_file0.size() == 0) {
+        log_file0 = "NVM_LOG";
+      }
       log_file = &log_file0;
       break;
     case 1:

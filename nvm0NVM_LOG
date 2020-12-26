@@ -1,0 +1,52 @@
+use_nvm_module:1 pmem_path:/mnt/nvm0 write_buffer_size:64.000000 MB 
+             Level0_column_compaction_trigger_size:7168.000000 MB  
+             Level0_column_compaction_slowdown_size:7680.000000 MB  
+             Level0_column_compaction_stop_size:8192.000000 MB  
+             Column_compaction_no_L1_select_L0:4 
+             Column_compaction_have_L1_select_L0:2 
+             level0_stop_writes_trigger:36 target_file_size_base:64.000000 MB
+use_nvm_module:1 pmem_path:/mnt/nvm0 write_buffer_size:64.000000 MB 
+             Level0_column_compaction_trigger_size:7168.000000 MB  
+             Level0_column_compaction_slowdown_size:7680.000000 MB  
+             Level0_column_compaction_stop_size:8192.000000 MB  
+             Column_compaction_no_L1_select_L0:4 
+             Column_compaction_have_L1_select_L0:2 
+             level0_stop_writes_trigger:36 target_file_size_base:64.000000 MB
+use_nvm_module:1 pmem_path:/mnt/nvm0 write_buffer_size:64.000000 MB 
+             Level0_column_compaction_trigger_size:7168.000000 MB  
+             Level0_column_compaction_slowdown_size:7680.000000 MB  
+             Level0_column_compaction_stop_size:8192.000000 MB  
+             Column_compaction_no_L1_select_L0:4 
+             Column_compaction_have_L1_select_L0:2 
+             level0_stop_writes_trigger:36 target_file_size_base:64.000000 MB
+crest PersistentSstable path:/mnt/nvm0/cf_0_default_sstable.pool map_len:18576.000000 MB is:0 each_size:72.000000 MB number:258 total_size:18576.000000 MB
+creat SstableMetadata
+compaction_num:0 pick_compaction_time:0 l0_get_time:0 l0_find_num:0
+NvmCfModule:close
+DestroyDB delete dir:/mnt/nvm0
+DestroyDB delete file:/mnt/nvm0/cf_0_default_sstable.pool
+use_nvm_module:1 pmem_path:/mnt/nvm0 write_buffer_size:64.000000 MB 
+             Level0_column_compaction_trigger_size:7168.000000 MB  
+             Level0_column_compaction_slowdown_size:7680.000000 MB  
+             Level0_column_compaction_stop_size:8192.000000 MB  
+             Column_compaction_no_L1_select_L0:4 
+             Column_compaction_have_L1_select_L0:2 
+             level0_stop_writes_trigger:36 target_file_size_base:64.000000 MB
+use_nvm_module:1 pmem_path:/mnt/nvm0 write_buffer_size:64.000000 MB 
+             Level0_column_compaction_trigger_size:7168.000000 MB  
+             Level0_column_compaction_slowdown_size:7680.000000 MB  
+             Level0_column_compaction_stop_size:8192.000000 MB  
+             Column_compaction_no_L1_select_L0:4 
+             Column_compaction_have_L1_select_L0:2 
+             level0_stop_writes_trigger:36 target_file_size_base:64.000000 MB
+crest PersistentSstable path:/mnt/nvm0/cf_0_default_sstable.pool map_len:18576.000000 MB is:0 each_size:72.000000 MB number:258 total_size:18576.000000 MB
+creat SstableMetadata
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:7 index:0
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:7 keynum:15660 size:61.77 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:10 index:1
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:10 keynum:15660 size:61.77 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:12 index:2
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:12 keynum:15658 size:61.76 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:14 index:3
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:14 keynum:15659 size:61.77 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:16 index:4
