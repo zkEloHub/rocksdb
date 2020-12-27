@@ -506,6 +506,7 @@ class ColumnFamilyData {
   bool HaveBalancedDistribution() const;
 ///
 ///
+  bool with_nvm_ = false;
   NvmCfModule* nvmcfmodule = nullptr;
 ///
 

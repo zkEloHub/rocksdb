@@ -416,7 +416,7 @@ ColumnFamilyData::ColumnFamilyData(
       dropped_(false),
       internal_comparator_(cf_options.comparator),
       initial_cf_options_(SanitizeOptions(db_options, cf_options)),
-      ioptions_(db_options, initial_cf_options_),
+      ioptions_(db_options, initial_cf_options_, cf_options.with_nvm),
       mutable_cf_options_(initial_cf_options_),
       is_delete_range_supported_(
           cf_options.table_factory->IsDeleteRangeSupported()),
@@ -440,9 +440,10 @@ ColumnFamilyData::ColumnFamilyData(
       bg_column_compaction_(false){
   Ref();
 // p ((NvmCfOptions*)ioptions_.nvm_cf_options)->use_nvm_module
-  if(ioptions_.nvm_cf_options != nullptr && ioptions_.nvm_cf_options->use_nvm_module && name_.size() != 0 && cf_options.with_nvm) {
+  if(ioptions_.nvm_cf_options != nullptr && ioptions_.nvm_cf_options->use_nvm_module && name_.size() != 0) {
     nvmcfmodule = NewNvmCfModule(ioptions_.nvm_cf_options.get(),name,id,&ioptions_.internal_comparator);
   }
+  with_nvm_ = cf_options.with_nvm;
   // Convert user defined table properties collector factories to internal ones.
   GetIntTblPropCollectorFactory(ioptions_, &int_tbl_prop_collector_factories_);
 

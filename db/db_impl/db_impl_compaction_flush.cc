@@ -288,6 +288,7 @@ Status DBImpl::FlushMemTableToNvm(ColumnFamilyData *cfd,const MutableCFOptions &
     snapshot_checker = DisableGCSnapshotChecker::Instance();
   }
   
+  // TODO: thread_pri 没有用上
   NvmFlushJob  flush_job(
       dbname_, cfd, immutable_db_options_, mutable_cf_options,
       nullptr /* memtable_id */, env_options_for_compaction_, versions_.get(),
@@ -2298,6 +2299,7 @@ Status DBImpl::BackgroundFlush(bool* made_progress, JobContext* job_context,
       superversion_contexts.emplace_back(SuperVersionContext(true));
       bg_flush_args.emplace_back(cfd, iter.second,
                                  &(superversion_contexts.back()));
+
     }
     if (!bg_flush_args.empty()) {
       break;
@@ -2305,9 +2307,16 @@ Status DBImpl::BackgroundFlush(bool* made_progress, JobContext* job_context,
   }
 
   if (!bg_flush_args.empty()) {
+    autovector<BGFlushArg> nvm_flush_args;
+    autovector<BGFlushArg> ssd_flush_args;
     auto bg_job_limits = GetBGJobLimits();
     for (const auto& arg : bg_flush_args) {
       ColumnFamilyData* cfd = arg.cfd_;
+      if (cfd->with_nvm_) {
+        nvm_flush_args.emplace_back(arg);
+      } else {
+        ssd_flush_args.emplace_back(arg);
+      }
       ROCKS_LOG_BUFFER(
           log_buffer,
           "Calling FlushMemTableToOutputFile with column "
@@ -2318,11 +2327,14 @@ Status DBImpl::BackgroundFlush(bool* made_progress, JobContext* job_context,
           bg_job_limits.max_compactions, bg_flush_scheduled_,
           bg_compaction_scheduled_);
     }
-    if (immutable_db_options_.nvm_setup != nullptr && immutable_db_options_.nvm_setup->use_nvm_module) {
-      status = FlushMemTablesToNvm(bg_flush_args, made_progress,
+    if (immutable_db_options_.nvm_setup != nullptr &&
+        immutable_db_options_.nvm_setup->use_nvm_module &&
+        !nvm_flush_args.empty()) {
+      status = FlushMemTablesToNvm(nvm_flush_args, made_progress,
                                         job_context, log_buffer, thread_pri);
-    } else{
-    status = FlushMemTablesToOutputFiles(bg_flush_args, made_progress,
+    }
+    if (!ssd_flush_args.empty()) {
+      status = FlushMemTablesToOutputFiles(ssd_flush_args, made_progress,
                                          job_context, log_buffer, thread_pri);
     }
     TEST_SYNC_POINT("DBImpl::BackgroundFlush:BeforeFlush");
