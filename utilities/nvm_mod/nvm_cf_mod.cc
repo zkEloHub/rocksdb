@@ -22,7 +22,7 @@ NvmCfModule::NvmCfModule(NvmCfOptions* nvmcfoption, const std::string& cf_name,
   // buffer size: 64M
   // stop_size: 8192M
   uint64_t level0_table_num = (nvmcfoption_->Level0_column_compaction_stop_size/nvmcfoption_->write_buffer_size + 1)*2;
-  ptr_sst_ = new PersistentSstable(pol_path,nvmcfoption_->write_buffer_size + 16ul * 1024 * 1024,
+  ptr_sst_ = new PersistentSstable(pol_path,nvmcfoption_->write_buffer_size + 64ul * 1024 * 1024,
             level0_table_num);
   
   sst_meta_ = new SstableMetadata(icmp_, nvmcfoption_);
