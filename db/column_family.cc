@@ -990,11 +990,19 @@ bool ColumnFamilyData::NeedsColumnCompaction() const{
   }
   auto* vstorage = current_->storage_info();
   if(vstorage->NumLevelFiles(1) == 0){ //L1层为空
-    bool ret = vstorage->NumLevelBytes(0) >= nvmcfmodule->GetNvmCfOptions()->Level0_column_compaction_trigger_size;
+    bool ret = vstorage->NumLevelBytes(0) >=
+                   nvmcfmodule->GetNvmCfOptions()
+                       ->Level0_column_compaction_trigger_size ||
+               vstorage->NumLevelFiles(0) >=
+                   nvmcfmodule->GetNvmCfOptions()
+                       ->Level0_column_compaction_trigger_file_num;
     if (ret) {
-      RECORD_LOG("pmem_path: %s, cf_name: %s, cf_id: %lu ; got trigger size \n",
-                 nvmcfmodule->GetNvmCfOptions()->pmem_path.c_str(),
-                 nvmcfmodule->GetCfName().c_str(), nvmcfmodule->GetCfId());
+      RECORD_LOG(
+          "pmem_path: %s, cf_name: %s, cf_id: %lu ; NeedsColumnCompaction, L0 "
+          "table num: %d, L0 total table size: %lu\n",
+          nvmcfmodule->GetNvmCfOptions()->pmem_path.c_str(),
+          nvmcfmodule->GetCfName().c_str(), nvmcfmodule->GetCfId(),
+          vstorage->NumLevelFiles(0), vstorage->NumLevelBytes(0));
     }
     return ret;
   }
@@ -1016,7 +1024,14 @@ bool ColumnFamilyData::NeedsColumnCompaction() const{
 ///
 bool ColumnFamilyData::HaveBalancedDistribution() const{
   auto* vstorage = current_->storage_info();
-  if( nvmcfmodule != nullptr && vstorage->NumLevelFiles(1) == 0 && vstorage->NumLevelBytes(0) < nvmcfmodule->GetNvmCfOptions()->Level0_column_compaction_trigger_size) return true;
+  if (nvmcfmodule != nullptr && vstorage->NumLevelFiles(1) == 0 &&
+      vstorage->NumLevelBytes(0) <
+          nvmcfmodule->GetNvmCfOptions()
+              ->Level0_column_compaction_trigger_size &&
+      vstorage->NumLevelFiles(0) <
+          nvmcfmodule->GetNvmCfOptions()
+              ->Level0_column_compaction_trigger_file_num)
+    return true;
   if ( vstorage->NumLevelFiles(0) >= mutable_cf_options_.level0_file_num_compaction_trigger || 
     vstorage->NumLevelBytes(1) >= mutable_cf_options_.max_bytes_for_level_base ) return false;
   return !compaction_picker_->NeedsCompaction(vstorage);

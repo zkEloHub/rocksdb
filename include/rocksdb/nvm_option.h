@@ -75,11 +75,12 @@ struct NvmCfOptions {
   int Column_compaction_have_L1_select_L0 = 2;   //column compaction时有L1文件交集时,至少选择L0数据量进行column compaction的文件个数
 
 
-
   uint64_t write_buffer_size;
   int max_write_buffer_number;
   int level0_stop_writes_trigger;
   uint64_t target_file_size_base;
+
+  int Level0_column_compaction_trigger_file_num = 2096;
 
 };
 

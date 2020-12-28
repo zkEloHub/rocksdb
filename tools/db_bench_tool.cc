@@ -6394,7 +6394,21 @@ class Benchmark {
   }
 };
 
+void test_func()
+{
+  std::string file_name = "log_db_options.ini";
+  rocksdb::DBOptions db_options;
+  std::vector<rocksdb::ColumnFamilyDescriptor> descriptors;
+  auto status = rocksdb::LoadOptionsFromFile(file_name, rocksdb::Env::Default(),
+                                                   &db_options, &descriptors, false);
+  for (rocksdb::ColumnFamilyDescriptor cd : descriptors) {
+    printf("[Info]: %s, %d \n", cd.name.c_str(), cd.options.with_nvm);
+  }
+  while (1) {}
+}
+
 int db_bench_tool(int argc, char** argv) {
+  // test_func();
   rocksdb::port::InstallStackTraceHandler();
   static bool initialized = false;
   if (!initialized) {

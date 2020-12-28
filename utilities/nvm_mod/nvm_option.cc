@@ -32,6 +32,7 @@ NvmCfOptions::NvmCfOptions(const std::shared_ptr<NvmSetup> setup,uint64_t s_writ
   level0_stop_writes_trigger = s_level0_stop_writes_trigger;
   //cf_pmem_size = 1ul * 1024 * 1024 * 1024;
   target_file_size_base = s_target_file_size_base;
+  Level0_column_compaction_trigger_file_num = (Level0_column_compaction_stop_size / write_buffer_size) * 2;     // 比预分配文件个数 少 2 个
   RECORD_LOG("use_nvm_module:%d pmem_path:%s write_buffer_size:%f MB \n \
             Level0_column_compaction_trigger_size:%f MB  \n \
             Level0_column_compaction_slowdown_size:%f MB  \n \
