@@ -303,6 +303,7 @@ Status NvmFlushJob::WriteLevel0Table() {
     Arena arena;
     uint64_t total_num_entries = 0, total_num_deletes = 0;
     size_t total_memory_usage = 0;
+    uint64_t total_data_size = 0;
     for (MemTable* m : mems_) {
       ROCKS_LOG_INFO(
           db_options_.info_log,
@@ -316,6 +317,7 @@ Status NvmFlushJob::WriteLevel0Table() {
       }
       total_num_entries += m->num_entries();
       total_num_deletes += m->num_deletes();
+      total_data_size += m->get_data_size();
       total_memory_usage += m->ApproximateMemoryUsage();
     }
 
@@ -323,8 +325,8 @@ Status NvmFlushJob::WriteLevel0Table() {
         << "job" << job_context_->job_id << "event"
         << "nvm flush_started"
         << "num_memtables" << mems_.size() << "num_entries" << total_num_entries
-        << "num_deletes" << total_num_deletes << "memory_usage"
-        << total_memory_usage << "flush_reason"
+        << "num_deletes" << total_num_deletes << "total_data_size" << total_data_size
+        << "memory_usage" << total_memory_usage << "flush_reason"
         << NvmGetFlushReasonString(cfd_->GetFlushReason());
 
     {

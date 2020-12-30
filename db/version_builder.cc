@@ -353,11 +353,11 @@ class VersionBuilder::Rep {
       while (added_iter != added_end || base_iter != base_end) {
         if (base_iter == base_end ||
                 (added_iter != added_end && cmp(*added_iter, *base_iter))) {
-          if(vstorage->is_nvmcf) {
-            MaybeAddFile(vstorage, level, *added_iter++, true);
-          } else {
-            MaybeAddFile(vstorage, level, *added_iter++);
-          }
+          // if(vstorage->is_nvmcf) {
+          //   MaybeAddFile(vstorage, level, *added_iter++, true);
+          // } else {
+          //   MaybeAddFile(vstorage, level, *added_iter++);}
+          MaybeAddFile(vstorage, level, *added_iter++, vstorage->is_nvmcf);
         } else {
           MaybeAddFile(vstorage, level, *base_iter++);
         }

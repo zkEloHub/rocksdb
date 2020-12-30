@@ -2495,10 +2495,10 @@ void VersionStorageInfo::AddFile(int level, FileMetaData* f, Logger* info_log) {
     auto* f2 = (*level_files)[level_files->size() - 1];
     if (info_log != nullptr) {
       Error(info_log, "Adding new file %" PRIu64
-                      " range (%s, %s) to level %d but overlapping "
+                      " range (%s, %s) is_nvm_level0 %d to level %d but overlapping "
                       "with existing file %" PRIu64 " %s %s",
             f->fd.GetNumber(), f->smallest.DebugString(true).c_str(),
-            f->largest.DebugString(true).c_str(), level, f2->fd.GetNumber(),
+            f->largest.DebugString(true).c_str(), f->is_nvm_level0, level, f2->fd.GetNumber(),
             f2->smallest.DebugString(true).c_str(),
             f2->largest.DebugString(true).c_str());
       LogFlush(info_log);
