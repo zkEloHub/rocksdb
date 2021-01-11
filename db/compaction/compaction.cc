@@ -269,7 +269,27 @@ Compaction::Compaction(VersionStorageInfo* vstorage,
     }
   }
 
-  GetBoundaryKeys(vstorage, inputs_, &smallest_user_key_, &largest_user_key_);
+  if (ccitem_ == nullptr) {
+    GetBoundaryKeys(vstorage, inputs_, &smallest_user_key_, &largest_user_key_);
+  }
+  else {  // column compaction
+    RECORD_LOG("column compaction Compaction Get\n");
+    if(inputs_.size() == 1 ){
+      smallest_user_key_ = ccitem_->L0smallest.user_key();
+      largest_user_key_ = ccitem_->L0largest.user_key();
+    }
+    else{
+      // TODO:
+      const Comparator* ucmp = vstorage->InternalComparator()->user_comparator();
+      Slice start1,end1,start2,end2;
+      start1 = ccitem_->L0smallest.user_key();
+      end1 = ccitem_->L0largest.user_key();
+      start2 = inputs_[1].files[0]->smallest.user_key();
+      end2 = inputs_[1].files.back()->largest.user_key();
+      smallest_user_key_ = ucmp->Compare(start1, start2) < 0 ? start1 : start2;
+      largest_user_key_ = ucmp->Compare(end1, end2) > 0 ? end1 : end2;
+    }
+  }
 }
 
 Compaction::~Compaction() {
