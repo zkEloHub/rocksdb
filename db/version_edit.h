@@ -92,7 +92,7 @@ struct FileMetaData {
 
 ////
   bool is_nvm_level0 ;         //nvm need
-  uint64_t first_key_index;   //nvm need
+  uint64_t first_key_index;    //nvm need
 
   //for nvm recover
   int nvm_sstable_index;

@@ -47,7 +47,7 @@ class NvmCfModule {
   bool Get(VersionStorageInfo* vstorage,Status *s,const LookupKey &lkey,std::string *value);
   void AddIterators(VersionStorageInfo* vstorage,MergeIteratorBuilder* merge_iter_builder);
 
-  FileEntry* FindFile(uint64_t filenumber,bool forward = true,bool have_error_print = true) { return sst_meta_->FindFile(filenumber,forward,have_error_print); }
+  FileEntry* FindFile(uint64_t filenumber, bool forward = true, bool have_error_print = true) { return sst_meta_->FindFile(filenumber, forward, have_error_print); }
 
   void RecoverFromStorageInfo(VersionStorageInfo* vstorage);
 
@@ -63,9 +63,9 @@ class NvmCfModule {
   bool BinarySearchInFile(FileEntry* file,int first_key_index,Slice *user_key,int *find_index,int *pre_left = nullptr,int *pre_right = nullptr);
   bool GetValueInFile(FileEntry* file,int find_index,std::string *value);
 
-  NvmCfOptions* nvmcfoption_;
-  SstableMetadata* sst_meta_;
-  PersistentSstable* ptr_sst_;
+  NvmCfOptions* nvmcfoption_;       // column family config
+  SstableMetadata* sst_meta_;       // level-0 sst files
+  PersistentSstable* ptr_sst_;      // column_family.pool
 
   bool open_by_creat_;
   

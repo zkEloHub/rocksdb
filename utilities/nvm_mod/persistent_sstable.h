@@ -13,6 +13,7 @@
 
 namespace rocksdb {
 
+// 管理 nvm 空间
 class PersistentSstable {
  public:
    PersistentSstable(std::string &path, uint64_t each_size,
@@ -86,11 +87,11 @@ class PersistentSstable {
 
   void RecoverAddSstable(int index) {
     if ((uint64_t)index >= num_) {
-      printf("error:recover file index >= nvm index!\n");
+      RECORD_LOG("[Error] recover file index >= nvm index!\n");
       return;
     }
     if (bitmap_->get(index) != 0 ) {
-      printf("error:recover file index is used !\n");
+      RECORD_LOG("[Error] recover file index is used !\n");
       return;
     }
     bitmap_->set(index);

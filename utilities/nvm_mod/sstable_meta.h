@@ -19,9 +19,10 @@ class InternalKeyComparator;
 
 //static const uint64_t MAX_INTERNAL_KEY_SIZE=64;
 
+// [Meta Data]
 struct KeysMetadata{
   InternalKey key;   //InternalKey 的key
-  int32_t next;   //指向下一个key的index,空为-1,从0开始。
+  int32_t next;   //指向下一个key的index, 空为-1, 从0开始。
   uint64_t offset;  //key-value结构的offset
   uint64_t size;  //key-value结构的大小
 
@@ -34,13 +35,12 @@ struct KeysMetadata{
 
 };
 
-
-
+// [RowTable]
 struct FileEntry{
     uint64_t filenum;
-    int sstable_index;
+    int sstable_index;             // 当前 File 在 nvm 中的 index; (nvm 中根据 index 计算 row 起始地址)
     //p<uint64_t> offset;          /不需要也可，在keys_meta[first_key_index].offset就是
-    struct KeysMetadata* keys_meta = nullptr; //指向多个（keys_num个）连续内存的KeysMetadata
+    struct KeysMetadata* keys_meta = nullptr; //指向多个（keys_num个）连续内存的KeysMetadata;  keys_meta 中的数据 按照 key 有序
     uint64_t keys_num;
    // uint64_t first_key_index;          //index 从0开始,在FileMetaData中保存
     uint64_t key_point_filenum;       //key 指向下一个文件的filenum，防止中间删除了文件
@@ -54,7 +54,6 @@ struct FileEntry{
         delete []keys_meta;
       }
     }
-
 };
 
 class SstableMetadata {
@@ -73,7 +72,7 @@ class SstableMetadata {
   uint64_t GetFilesNumber();
 
   //uint64_t GetImmuFileEntryNum();
-  std::vector<uint64_t> compaction_files;    //L0 commpaction file,只有单个线程会用到
+  std::vector<uint64_t> compaction_files;    //L0 commpaction file,只有单个线程会用到, 无互斥
 private:
   std::vector<FileEntry*> files_;   ////vector，新的插入头，旧的在尾，保持所有L0的sstable
 
