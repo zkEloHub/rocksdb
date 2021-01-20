@@ -23,7 +23,6 @@ namespace rocksdb {
         int cur = x >> 3;
         int remainder = x & (7);
         if (cur > gsize)return -1;
-
         return (bitmap[cur] >> remainder) & 1;
     }
 
@@ -43,7 +42,7 @@ namespace rocksdb {
         return 1;
     }
 
-    int BitMap::reset(){
+    int BitMap::reset() {
         memset(bitmap, 0, gsize);
         return 1;
     }

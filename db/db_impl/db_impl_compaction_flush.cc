@@ -271,7 +271,10 @@ Status DBImpl::FlushMemTablesToOutputFiles(
 }
 
 ///
-Status DBImpl::FlushMemTableToNvm(ColumnFamilyData *cfd,const MutableCFOptions &mutable_cf_options,
+// 1. 生成一个 NvmFlushJob
+// 2. flush_job 选择需要 flush 的 memtable (PickMemtable)
+// 3. flush_job 执行 flush 操作 (Run), 将 memtable 持久化 (=> RowTable)
+Status DBImpl::FlushMemTableToNvm(ColumnFamilyData *cfd, const MutableCFOptions &mutable_cf_options,
                             bool *made_progress, JobContext *job_context,
                             SuperVersionContext *superversion_context,
                             LogBuffer *log_buffer, Env::Priority thread_pri){
@@ -288,7 +291,7 @@ Status DBImpl::FlushMemTableToNvm(ColumnFamilyData *cfd,const MutableCFOptions &
     snapshot_checker = DisableGCSnapshotChecker::Instance();
   }
   
-  // TODO: thread_pri 没有用上
+  /// TODO: thread_pri 没有用上
   NvmFlushJob  flush_job(
       dbname_, cfd, immutable_db_options_, mutable_cf_options,
       nullptr /* memtable_id */, env_options_for_compaction_, versions_.get(),
@@ -301,15 +304,8 @@ Status DBImpl::FlushMemTableToNvm(ColumnFamilyData *cfd,const MutableCFOptions &
 
   FileMetaData file_meta;
 
-  //TEST_SYNC_POINT("DBImpl::FlushMemTableToOutputFile:BeforePickMemtables");
+  // 选出需要 flush 的 memtable, 初始化 base_, mems_, edit_, ...
   flush_job.PickMemTable();
-  //TEST_SYNC_POINT("DBImpl::FlushMemTableToOutputFile:AfterPickMemtables");
-
-/*#ifndef ROCKSDB_LITE
-  // may temporarily unlock and lock the mutex.
-  NotifyOnFlushBegin(cfd, &file_meta, mutable_cf_options, job_context->job_id,
-                     flush_job.GetTableProperties());
-#endif  // ROCKSDB_LITE*/
 
   Status s;
   if (logfile_number_ > 0 &&
@@ -353,33 +349,10 @@ Status DBImpl::FlushMemTableToNvm(ColumnFamilyData *cfd,const MutableCFOptions &
     Status new_bg_error = s;
     error_handler_.SetBGError(new_bg_error, BackgroundErrorReason::kFlush);
   }
-/*  if (s.ok()) {
-#ifndef ROCKSDB_LITE
-    // may temporarily unlock and lock the mutex.
-    NotifyOnFlushCompleted(cfd, &file_meta, mutable_cf_options,
-                           job_context->job_id, flush_job.GetTableProperties());
-    auto sfm = static_cast<SstFileManagerImpl*>(
-        immutable_db_options_.sst_file_manager.get());
-    if (sfm) {
-      // Notify sst_file_manager that a new file was added
-      std::string file_path = MakeTableFileName(
-          cfd->ioptions()->cf_paths[0].path, file_meta.fd.GetNumber());
-      sfm->OnAddFile(file_path);
-      if (sfm->IsMaxAllowedSpaceReached()) {
-        Status new_bg_error = Status::SpaceLimit("Max allowed space was reached");
-        TEST_SYNC_POINT_CALLBACK(
-            "DBImpl::FlushMemTableToOutputFile:MaxAllowedSpaceReached",
-            &new_bg_error);
-        error_handler_.SetBGError(new_bg_error, BackgroundErrorReason::kFlush);
-      }
-    }
-#endif  // ROCKSDB_LITE
-  }*/
   return s;
-    
-
 }
 
+// FlushMemTableToNvm
 Status DBImpl::FlushMemTablesToNvm(const autovector<BGFlushArg>& bg_flush_args, bool* made_progress,
       JobContext* job_context, LogBuffer* log_buffer, Env::Priority thread_pri) {
   Status s;
@@ -2012,6 +1985,8 @@ Status DBImpl::EnableAutoCompaction(
   return s;
 }
 
+// 检查是否有 column family 需要 flush/compaction
+// unscheduled_flushes_; unscheduled_compactions_
 void DBImpl::MaybeScheduleFlushOrCompaction() {
   mutex_.AssertHeld();
   if (!opened_successfully_) {
@@ -2031,6 +2006,9 @@ void DBImpl::MaybeScheduleFlushOrCompaction() {
     // DB is being deleted; no more background compactions
     return;
   }
+
+  // unscheduled_flushes_: 每添加一个 column family 到 flush_queue_, 该值 +1
+  // 满足条件时调度 BGWorkFlush
   auto bg_job_limits = GetBGJobLimits();
   bool is_flush_pool_empty =
       env_->GetBackgroundThreads(Env::Priority::HIGH) == 0;
@@ -2069,7 +2047,6 @@ void DBImpl::MaybeScheduleFlushOrCompaction() {
     // out here and let the higher level recovery handle compactions
     return;
   }
-
   if (HasExclusiveManualCompaction()) {
     // only manual compactions are allowed to run. don't schedule automatic
     // compactions
@@ -2077,6 +2054,8 @@ void DBImpl::MaybeScheduleFlushOrCompaction() {
     return;
   }
 
+  // unscheduled_compactions_: 每添加一个 column family 到 compaction_queue_, 该值 +1
+  // 满足条件时调度 BGWorkCompaction
   while (bg_compaction_scheduled_ < bg_job_limits.max_compactions &&
          unscheduled_compactions_ > 0) {
     CompactionArg* ca = new CompactionArg;
@@ -2172,6 +2151,7 @@ ColumnFamilyData* DBImpl::PickCompactionFromQueue(
   return cfd;
 }
 
+// 将 flush_req 中 需要 flush 的 Column family 信息加入 flush_queue_
 void DBImpl::SchedulePendingFlush(const FlushRequest& flush_req,
                                   FlushReason flush_reason) {
   if (flush_req.empty()) {
@@ -2200,6 +2180,7 @@ void DBImpl::SchedulePendingPurge(std::string fname, std::string dir_to_sync,
   purge_queue_.push_back(std::move(file_info));
 }
 
+// BackgroundCallFlush
 void DBImpl::BGWorkFlush(void* arg) {
   FlushThreadArg fta = *(reinterpret_cast<FlushThreadArg*>(arg));
   delete reinterpret_cast<FlushThreadArg*>(arg);
@@ -2210,6 +2191,7 @@ void DBImpl::BGWorkFlush(void* arg) {
   TEST_SYNC_POINT("DBImpl::BGWorkFlush:done");
 }
 
+// BackgroundCallCompaction
 void DBImpl::BGWorkCompaction(void* arg) {
   CompactionArg ca = *(reinterpret_cast<CompactionArg*>(arg));
   delete reinterpret_cast<CompactionArg*>(arg);
@@ -2258,6 +2240,8 @@ void DBImpl::UnscheduleFlushCallback(void* arg) {
   TEST_SYNC_POINT("DBImpl::UnscheduleFlushCallback");
 }
 
+// 1. 处理 flush_queue_ 中待 flush 的 Column Familys
+// 2. 调用 FlushMemTablesToNvm/FlushMemTablesToOutputFiles 执行 Flush
 Status DBImpl::BackgroundFlush(bool* made_progress, JobContext* job_context,
                                LogBuffer* log_buffer, FlushReason* reason,
                                Env::Priority thread_pri) {
@@ -2283,6 +2267,7 @@ Status DBImpl::BackgroundFlush(bool* made_progress, JobContext* job_context,
   std::vector<SuperVersionContext>& superversion_contexts =
       job_context->superversion_contexts;
   autovector<ColumnFamilyData*> column_families_not_to_flush;
+  // 处理 flush_queue_ 中添加需要 flush 的 column family
   while (!flush_queue_.empty()) {
     // This cfd is already referenced
     const FlushRequest& flush_req = PopFirstFromFlushQueue();
@@ -2306,6 +2291,8 @@ Status DBImpl::BackgroundFlush(bool* made_progress, JobContext* job_context,
     }
   }
 
+  // NVM 中的 Column Family => FlushMemTablesToNvm
+  // SSD 中的 Column Family => FlushMemTablesToOutputFiles
   if (!bg_flush_args.empty()) {
     autovector<BGFlushArg> nvm_flush_args;
     autovector<BGFlushArg> ssd_flush_args;
@@ -2357,8 +2344,10 @@ Status DBImpl::BackgroundFlush(bool* made_progress, JobContext* job_context,
   return status;
 }
 
+// 有 column family 需要 flush
 void DBImpl::BackgroundCallFlush(Env::Priority thread_pri) {
   bool made_progress = false;
+  // 分配 JOB
   JobContext job_context(next_job_id_.fetch_add(1), true);
 
   TEST_SYNC_POINT("DBImpl::BackgroundCallFlush:start");
@@ -2436,9 +2425,11 @@ void DBImpl::BackgroundCallFlush(Env::Priority thread_pri) {
   }
 }
 
+// 
 void DBImpl::BackgroundCallCompaction(PrepickedCompaction* prepicked_compaction,
                                       Env::Priority bg_thread_pri) {
   bool made_progress = false;
+  // 分配 JOB
   JobContext job_context(next_job_id_.fetch_add(1), true);
   TEST_SYNC_POINT("BackgroundCallCompaction:0");
   LogBuffer log_buffer(InfoLogLevel::INFO_LEVEL,
@@ -2546,6 +2537,8 @@ void DBImpl::BackgroundCallCompaction(PrepickedCompaction* prepicked_compaction,
   ROCKS_LOG_INFO(immutable_db_options_.info_log,"[JOB %d] compaction end!",job_context.job_id);
 }
 
+// 1. 从 compaction_queue_ 中取出一个 有效的需要 compaction 的 Column Family Data
+// 2. 判断当前 cfd 是否需要 Column Compaction (根据 L0 总的 table 大小 或 文件数量)
 Status DBImpl::BackgroundCompaction(bool* made_progress,
                                     JobContext* job_context,
                                     LogBuffer* log_buffer,
@@ -2614,6 +2607,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
   // InternalKey manual_end_storage;
   // InternalKey* manual_end = &manual_end_storage;
   bool sfm_reserved_compact_space = false;
+  // MaybeScheduleFlushOrCompaction: !is_manual
   if (is_manual) {
     ManualCompactionState* m = manual_compaction;
     assert(m->in_progress);
@@ -2665,7 +2659,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
     auto cfd = PickCompactionFromQueue(&task_token, log_buffer);
     if (cfd == nullptr) {
       // Can't find any executable task from the compaction queue.
-      // All tasks have been throttled by compaction thread limiter.
+      // All tasks have been throttled by compaction thread limiter.(限制器)
       ++unscheduled_compactions_;
       return Status::Busy();
     }
@@ -2682,6 +2676,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
       return Status::OK();
     }
     //job_context->nvmcfs.push_back(cfd->nvmcfmodule);
+    // Level-0: NeedsColumnCompaction
     is_column_compaction = cfd->NeedsColumnCompaction();
     if(is_column_compaction){
       RECORD_LOG("do column compaction\n");
@@ -2699,17 +2694,21 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
       // compaction is not necessary. Need to make sure mutex is held
       // until we make a copy in the following code
       TEST_SYNC_POINT("DBImpl::BackgroundCompaction():BeforePickCompaction");
-      c.reset(cfd->PickCompaction(*mutable_cf_options, log_buffer,is_column_compaction,cfd->nvmcfmodule));
+
+      // PickCompaction: 获取本次 Compaction 的相关信息 (输入, 输出, key range, CCItem 等);
+      // 对于 Column Compaction: 设置 ColumnCompactionItem 信息
+      c.reset(cfd->PickCompaction(*mutable_cf_options, log_buffer, is_column_compaction, cfd->nvmcfmodule));
       TEST_SYNC_POINT("DBImpl::BackgroundCompaction():AfterPickCompaction");
       if(is_column_compaction && c == nullptr) {  //column comapction pick failed!
+        RECORD_LOG("[Error] Pick Compaction by column compaction failed! \n");
         cfd->set_bg_column_compaction(false);
-        c.reset(cfd->PickCompaction(*mutable_cf_options, log_buffer)); //挑选正常的compaction
+        c.reset(cfd->PickCompaction(*mutable_cf_options, log_buffer)); // 挑选正常的compaction
       }
 
+      // 已生成 compaction 实例
       if (c != nullptr) {
         bool enough_room = EnoughRoomForCompaction(
             cfd, *(c->inputs()), &sfm_reserved_compact_space, log_buffer);
-
         if (!enough_room) {
           // Then don't do the compaction
           c->ReleaseCompactionFiles(status);
@@ -2718,14 +2717,17 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
               ->storage_info()
               ->ComputeCompactionScore(*(c->immutable_cf_options()),
                                        *(c->mutable_cf_options()));
+          // 重新将当前 cfd 加入 compaction_queue_
           AddToCompactionQueue(cfd);
           ++unscheduled_compactions_;
 
+          // 空间不足, 重置 compaction
           c.reset();
           // Don't need to sleep here, because BackgroundCallCompaction
           // will sleep if !s.ok()
           status = Status::CompactionTooLarge();
         } else {
+          // 可进行 compaction
           // update statistics
           RecordInHistogram(stats_, NUM_FILES_IN_SINGLE_COMPACTION,
                             c->inputs(0)->size());
@@ -2741,7 +2743,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
           // files that are currently being compacted. If we need another
           // compaction, we might be able to execute it in parallel, so we add
           // it to the queue and schedule a new thread.
-          if (cfd->NeedsCompaction()) {
+          if (cfd->NeedsCompaction()) {   // Column Compaction 或 正常
             // Yes, we need more compactions!
             AddToCompactionQueue(cfd);
             ++unscheduled_compactions_;
@@ -2752,6 +2754,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
     }
   }
 
+  /// TODO: 
   if (!c) {
     // Nothing to do
     ROCKS_LOG_BUFFER(log_buffer, "Compaction nothing to do");
@@ -2770,6 +2773,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
     NotifyOnCompactionBegin(c->column_family_data(), c.get(), status,
                             compaction_job_stats, job_context->job_id);
 
+    // 更新 edit
     for (const auto& f : *c->inputs(0)) {
       c->edit()->DeleteFile(c->level(), f->fd.GetNumber());
     }
@@ -2896,6 +2900,7 @@ Status DBImpl::BackgroundCompaction(bool* made_progress,
     SnapshotListFetchCallbackImpl fetch_callback(
         this, env_, c->mutable_cf_options()->snap_refresh_nanos,
         immutable_db_options_.info_log.get());
+    // compaction job; 传入 compaction 实例
     CompactionJob compaction_job(
         job_context->job_id, c.get(), immutable_db_options_,
         env_options_for_compaction_, versions_.get(), &shutting_down_,

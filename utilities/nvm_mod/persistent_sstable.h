@@ -13,7 +13,8 @@
 
 namespace rocksdb {
 
-// 管理 nvm 空间
+// 1. NVM 空间预分配
+// 2. 以 table 形式管理 NVM 空间 (利用 bitmap, table 申请/释放)
 class PersistentSstable {
  public:
    PersistentSstable(std::string &path, uint64_t each_size,
@@ -98,16 +99,15 @@ class PersistentSstable {
     use_num_ = use_num_ + 1;
   }
 
-
  private:
-  char* raw_;           // pmem
-  BitMap* bitmap_;      // BitMap(number)
+  char* raw_;           // nvm 起始地址
+  BitMap* bitmap_;      // 管理 nvm 中 table 使用情况
   size_t mapped_len_;
   int is_pmem_;
-  uint64_t total_size_; // each_size_ * num_:  72M * 256 = 18G
-  uint64_t each_size_;  // write buffer size + 8M:  64 + 8
+  uint64_t total_size_; // each_size_ * num_:  128M * 256 = 32G
+  uint64_t each_size_;  // write buffer size + 64 = 64 + 64 = 128M
   uint64_t num_;        // L0 table number: 256:  (Level0_column_compaction_stop_size / write_buffer_size + 1) * 2
-  uint64_t use_num_;
+  uint64_t use_num_;    // L0 已使用 table 数量
 };
 
 }  // namespace rocksdb

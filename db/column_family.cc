@@ -989,7 +989,8 @@ bool ColumnFamilyData::NeedsColumnCompaction() const{
     return false;
   }
   auto* vstorage = current_->storage_info();
-  if(vstorage->NumLevelFiles(1) == 0){ //L1层为空
+  // L1 为空时
+  if(vstorage->NumLevelFiles(1) == 0){
     bool ret = vstorage->NumLevelBytes(0) >=
                    nvmcfmodule->GetNvmCfOptions()
                        ->Level0_column_compaction_trigger_size ||
@@ -998,7 +999,7 @@ bool ColumnFamilyData::NeedsColumnCompaction() const{
                        ->Level0_column_compaction_trigger_file_num;
     if (ret) {
       RECORD_LOG(
-          "pmem_path: %s, cf_name: %s, cf_id: %lu ; NeedsColumnCompaction, L0 "
+          "[Info] Needs Column Compaction true, pmem_path: %s, cf_name: %s, cf_id: %lu ; NeedsColumnCompaction, L0 "
           "table num: %d, L0 total table size: %lu\n",
           nvmcfmodule->GetNvmCfOptions()->pmem_path.c_str(),
           nvmcfmodule->GetCfName().c_str(), nvmcfmodule->GetCfId(),
@@ -1006,6 +1007,7 @@ bool ColumnFamilyData::NeedsColumnCompaction() const{
     }
     return ret;
   }
+  // L1 不为空时
   else{  //可及时将L0往下刷
     return vstorage->NumLevelFiles(0) >= mutable_cf_options_.level0_file_num_compaction_trigger;
   }
@@ -1037,10 +1039,11 @@ bool ColumnFamilyData::HaveBalancedDistribution() const{
   return !compaction_picker_->NeedsCompaction(vstorage);
 }
 
+// 根据不同的 compaction_picker (这里是 level), 执行 PickCompaction, 获取 compaction 实例(compaction.cc)
 Compaction* ColumnFamilyData::PickCompaction(
-    const MutableCFOptions& mutable_options, LogBuffer* log_buffer,bool for_column_compaction,NvmCfModule* nvmcf) {
+    const MutableCFOptions& mutable_options, LogBuffer* log_buffer, bool for_column_compaction, NvmCfModule* nvmcf) {
   auto* result = compaction_picker_->PickCompaction(
-      GetName(), mutable_options, current_->storage_info(), log_buffer,for_column_compaction,nvmcf);
+      GetName(), mutable_options, current_->storage_info(), log_buffer, for_column_compaction, nvmcf);
   if (result != nullptr) {
     result->SetInputVersion(current_);
   }

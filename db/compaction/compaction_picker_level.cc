@@ -59,7 +59,7 @@ class LevelCompactionBuilder {
         ccitem(nullptr){}
 
   // Pick and return a compaction.
-  Compaction* PickCompaction(bool for_column_compaction = false,NvmCfModule* nvmcf = nullptr);
+  Compaction* PickCompaction(bool for_column_compaction = false, NvmCfModule* nvmcf = nullptr);
 
   // Pick the initial files to compact to the next level. (or together
   // in Intra-L0 compactions)
@@ -113,7 +113,7 @@ class LevelCompactionBuilder {
   double start_level_score_ = 0;
   bool is_manual_ = false;
   CompactionInputFiles start_level_inputs_;
-  std::vector<CompactionInputFiles> compaction_inputs_;
+  std::vector<CompactionInputFiles> compaction_inputs_;       // CompactionInputFiles: 管理相同 level 中需要 compaction 的 files 信息
   CompactionInputFiles output_level_inputs_;
   std::vector<FileMetaData*> grandparents_;
   CompactionReason compaction_reason_ = CompactionReason::kUnknown;
@@ -206,7 +206,9 @@ void LevelCompactionBuilder::SetupInitialFiles() {
   for (int i = 0; i < compaction_picker_->NumberLevels() - 1; i++) {
     start_level_score_ = vstorage_->CompactionScore(i);
     start_level_ = vstorage_->CompactionScoreLevel(i);
+    /// for nvm level-0
     if(vstorage_->is_nvmcf && start_level_ == 0) continue;
+    ///
     assert(i == 0 || start_level_score_ <= vstorage_->CompactionScore(i - 1));
     if (start_level_score_ >= 1) {
       if (skipped_l0_to_base && start_level_ == vstorage_->base_level()) {
@@ -352,8 +354,11 @@ bool LevelCompactionBuilder::SetupOtherInputsIfNeeded() {
   return true;
 }
 
-///
-bool LevelCompactionBuilder::SetupColumnCompactionInputs(NvmCfModule* nvmcf){
+// 1. 生成 ColumnCompactionItem (保存需要 column compaction 的 files, key, size 信息)
+// 2. 根据 ccitem 信息，更新 compaction_inputs_ 以及 compaction 后的 key range
+// 3. 根据 key range 获取 output_level_ 中的 FileMetaData 信息
+//     (1) output_level_ = vstorage_->base_level(): Level that L0 data should be compacted to
+bool LevelCompactionBuilder::SetupColumnCompactionInputs(NvmCfModule* nvmcf) {
     start_level_ = 0;
     start_level_inputs_.level = 0;
     output_level_ = vstorage_->base_level();
@@ -365,6 +370,7 @@ bool LevelCompactionBuilder::SetupColumnCompactionInputs(NvmCfModule* nvmcf){
 #else
     RECORD_LOG("nvm cf pick column compaction\n");
 #endif
+    // 根据 vstorage_ L0files, 获取需要 compaction 的 信息: ccitem
     ccitem = nvmcf->PickColumnCompaction(vstorage_);
     if(ccitem == nullptr) {
       return false;
@@ -375,81 +381,90 @@ bool LevelCompactionBuilder::SetupColumnCompactionInputs(NvmCfModule* nvmcf){
     global_stats.pick_compaction_time += (end_time - start_time);
 #endif
     start_level_score_ = nvmcf->GetCompactionScore();
-    RECORD_LOG("L0 select num:%lu L0 select size:%.2f MB\n",ccitem->files.size(),1.0 * ccitem->L0select_size/1048576);
-    RECORD_LOG("L0smallest:%s L0largest:%s\n",ccitem->L0smallest.DebugString(true).c_str(),ccitem->L0largest.DebugString(true).c_str());
-    for(unsigned int i = 0;i < ccitem->files.size();i++){
-      RECORD_LOG("select L0:%lu keynum:%lu size:%.2f MB\n",ccitem->files.at(i)->filenum,ccitem->keys_num.at(i),1.0*ccitem->keys_size.at(i)/1048576.0);
+    RECORD_LOG("[Info] Column Compaction: L0 select num:%lu L0 select size:%.2f MB\n", ccitem->files.size(), 1.0 * ccitem->L0select_size/1048576);
+    RECORD_LOG("[Info] Column Compaction: L0smallest:%s L0largest:%s\n", ccitem->L0smallest.DebugString(true).c_str(), ccitem->L0largest.DebugString(true).c_str());
+    // FileEntry 信息
+    for(unsigned int i = 0; i < ccitem->files.size(); i++) {
+      RECORD_LOG("select L0:%lu keynum:%lu size:%.2f MB\n", ccitem->files.at(i)->filenum, ccitem->keys_num.at(i), 1.0*ccitem->keys_size.at(i)/1048576.0);
     }
     
-    for(unsigned int i = 0;i < ccitem->L0compactionfiles.size();i++){
+    // compaction 的 L0 FileMetaData 信息
+    for(unsigned int i = 0; i < ccitem->L0compactionfiles.size(); i++) {
       start_level_inputs_.files.push_back(ccitem->L0compactionfiles.at(i));
     }
-    for(unsigned int i = 0;i < ccitem->L1compactionfiles.size();i++){
+    
+    // 可能存在与 L1 有 overlap 的 L0 files
+    for(unsigned int i = 0; i < ccitem->L1compactionfiles.size(); i++) {
       RECORD_LOG("select L1:%lu [%s-%s]\n",ccitem->L1compactionfiles.at(i)->fd.GetNumber(),ccitem->L1compactionfiles.at(i)->smallest.DebugString(true).c_str(),ccitem->L1compactionfiles.at(i)->largest.DebugString(true).c_str());
       output_level_inputs_.files.push_back(ccitem->L1compactionfiles.at(i));
     }
-    for(unsigned int i = 0;i < ccitem->L1compactionfiles.size();i++){
+    for(unsigned int i = 0;i < ccitem->L1compactionfiles.size();i++) {
       if(ccitem->L1compactionfiles.at(i)->being_compacted) {  //挑选的L1 files 有正在compacted，失败
           start_level_inputs_.clear();
           output_level_inputs_.clear();
-          RECORD_LOG("warn:select L1:%ld being compacted!\n",ccitem->L1compactionfiles.at(i)->fd.GetNumber());
+          RECORD_LOG("[Warn] select L1:%ld being compacted!\n",ccitem->L1compactionfiles.at(i)->fd.GetNumber());
           delete ccitem;
           return false;
       }
     }
+    // 添加需要 compaction 的 L0 和 L1 信息
     compaction_inputs_.push_back(start_level_inputs_);
     if (!output_level_inputs_.empty()) {
       compaction_inputs_.push_back(output_level_inputs_);
     }
 
+    // 获取 L0 compaction 后的 key range
     InternalKey start;
     InternalKey limit;
-    if(!output_level_inputs_.empty()){
-      InternalKey start1,limit1,start2,limit2;
+    if(!output_level_inputs_.empty()) {
+      InternalKey start1, limit1, start2, limit2;
       start1 = ccitem->L0smallest;
       limit1 = ccitem->L0largest;
-      compaction_picker_->GetRange(output_level_inputs_,&start2,&limit2);
-      compaction_picker_->GetRange(&start,&limit,&start1,&limit1,&start2,&limit2);
-
+      compaction_picker_->GetRange(output_level_inputs_, &start2, &limit2);
+      compaction_picker_->GetRange(&start, &limit, &start1, &limit1, &start2, &limit2);
     }
-    else{
+    else {
       start = ccitem->L0smallest;
       limit = ccitem->L0largest;
     }
+    // vstorage 的 output_level_inputs_.level 层数据中，与 start, end 有交集的数据 => grandparents_
     vstorage_->GetOverlappingInputs(output_level_inputs_.level + 1, &start,
                                    &limit, &grandparents_);
     return true;
 }
 ///
 
-Compaction* LevelCompactionBuilder::PickCompaction(bool for_column_compaction,NvmCfModule* nvmcf) {
+// 1. 获取 Column Compaction 之前的必要信息 (ColumnCompactionItem, start_level_inputs_, output_level_inputs_, 输入输出)
+// 2. 返回 Compaction 实例 (compaction.cc)
+Compaction* LevelCompactionBuilder::PickCompaction(bool for_column_compaction, NvmCfModule* nvmcf) {
   // Pick up the first file to start compaction. It may have been extended
   // to a clean cut.
-  if(for_column_compaction){
-    RECORD_LOG("pick column compaction\n");
+  if(for_column_compaction) {
+    RECORD_LOG("[Info] Column Compactoin: pick column compaction\n");
     if(!SetupColumnCompactionInputs(nvmcf)) {  //选择 column Compaction 失败
-      RECORD_LOG("warn:pick column compaction failed!\n");
+      RECORD_LOG("[Warn] pick column compaction failed!\n");
       return nullptr;
     }
   }
   else {
-  SetupInitialFiles();
-  if (start_level_inputs_.empty()) {
-    return nullptr;
-  }
-  assert(start_level_ >= 0 && output_level_ >= 0);
+    // 不是 nvmcf, 或者不满足 L0 column compaction 条件
+    SetupInitialFiles();
+    if (start_level_inputs_.empty()) {
+      return nullptr;
+    }
+    assert(start_level_ >= 0 && output_level_ >= 0);
 
-  // If it is a L0 -> base level compaction, we need to set up other L0
-  // files if needed.
-  if (!SetupOtherL0FilesIfNeeded()) {
-    return nullptr;
-  }
+    // If it is a L0 -> base level compaction, we need to set up other L0
+    // files if needed.
+    if (!SetupOtherL0FilesIfNeeded()) {
+      return nullptr;
+    }
 
-  // Pick files in the output level and expand more files in the start level
-  // if needed.
-  if (!SetupOtherInputsIfNeeded()) {
-    return nullptr;
-  }
+    // Pick files in the output level and expand more files in the start level
+    // if needed.
+    if (!SetupOtherInputsIfNeeded()) {
+      return nullptr;
+    }
   }
 
   // Form a compaction object containing the files we picked.
@@ -460,6 +475,7 @@ Compaction* LevelCompactionBuilder::PickCompaction(bool for_column_compaction,Nv
   return c;
 }
 
+// compactoin.cc
 Compaction* LevelCompactionBuilder::GetCompaction() {
   auto c = new Compaction(
       vstorage_, ioptions_, mutable_cf_options_, std::move(compaction_inputs_),
@@ -473,7 +489,7 @@ Compaction* LevelCompactionBuilder::GetCompaction() {
                          output_level_, vstorage_->base_level()),
       GetCompressionOptions(ioptions_, vstorage_, output_level_),
       /* max_subcompactions */ 0, std::move(grandparents_), is_manual_,
-      start_level_score_, false /* deletion_compaction */, compaction_reason_,ccitem);
+      start_level_score_, false /* deletion_compaction */, compaction_reason_, ccitem);
 
   // If it's level 0 compaction, make sure we don't execute any other level 0
   // compactions in parallel
@@ -635,9 +651,9 @@ bool LevelCompactionBuilder::PickIntraL0Compaction() {
 
 Compaction* LevelCompactionPicker::PickCompaction(
     const std::string& cf_name, const MutableCFOptions& mutable_cf_options,
-    VersionStorageInfo* vstorage, LogBuffer* log_buffer,bool for_column_compaction,NvmCfModule* nvmcf) {
+    VersionStorageInfo* vstorage, LogBuffer* log_buffer, bool for_column_compaction, NvmCfModule* nvmcf) {
   LevelCompactionBuilder builder(cf_name, vstorage, this, log_buffer,
                                  mutable_cf_options, ioptions_);
-  return builder.PickCompaction(for_column_compaction,nvmcf);
+  return builder.PickCompaction(for_column_compaction, nvmcf);
 }
 }  // namespace rocksdb

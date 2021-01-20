@@ -5107,10 +5107,10 @@ InternalIterator* VersionSet::MakeInputIterator(
   return result;
 }
 
-///
+/// 
 InternalIterator* VersionSet::MakeColumnCompactionInputIterator(
       const Compaction* c, RangeDelAggregator* range_del_agg,
-      const EnvOptions& env_options_compactions){
+      const EnvOptions& env_options_compactions) {
   auto cfd = c->column_family_data();
   ReadOptions read_options;
   read_options.verify_checksums = true;
@@ -5130,13 +5130,22 @@ InternalIterator* VersionSet::MakeColumnCompactionInputIterator(
   InternalIterator** list = new InternalIterator* [space];
   size_t num = 0;
   FileEntry* file = nullptr;
+  // 处理每一层; inputs_.size()
   for (size_t which = 0; which < c->num_input_levels(); which++) {
     if (c->input_levels(which)->num_files != 0) {
+      // 当前处理 L0
       if (c->level(which) == 0) {
         for (size_t i = 0; i < c->GetColumnCompactionItem()->files.size(); i++) {
           file = c->GetColumnCompactionItem()->files.at(i);
-
-          list[num++] = NewColumnCompactionItemIterator(&cfd->internal_comparator(), cfd->nvmcfmodule->GetIndexPtr(file->sstable_index),file,c->GetColumnCompactionItem()->L0compactionfiles.at(i)->first_key_index,c->GetColumnCompactionItem()->keys_num.at(i),true);
+          // use_buffer: true
+          // (FileEntry* file, uint64_t first_key_index, uint64_t keys_num)
+          list[num++] = NewColumnCompactionItemIterator(
+              &cfd->internal_comparator(),
+              cfd->nvmcfmodule->GetIndexPtr(file->sstable_index), file,
+              c->GetColumnCompactionItem()
+                  ->L0compactionfiles.at(i)
+                  ->first_key_index,
+              c->GetColumnCompactionItem()->keys_num.at(i), true);
         }
       } else {
         // Create concatenating iterator for the files from this level
@@ -5495,7 +5504,7 @@ Status ReactiveVersionSet::Recover(
                                current_version_number_++);
       builder->SaveTo(v->storage_info());
 
-///
+///   TODO: 新增
       if(v->storage_info()->is_nvmcf){
         cfd->nvmcfmodule->RecoverFromStorageInfo(v->storage_info());
       }

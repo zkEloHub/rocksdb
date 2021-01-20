@@ -5,14 +5,15 @@
 
 namespace rocksdb {
 
+// 多个 FileEntry 的 KV 迭代器的封装 (Merge)
 class KeysMergeIterator{
 public:
     KeysMergeIterator(std::vector<FileEntry*> *files,std::vector<uint64_t> *first_key_indexs, const Comparator* user_comparator)
-    :files_(files),first_key_indexs_(first_key_indexs),user_comparator_(user_comparator){
+    :files_(files), first_key_indexs_(first_key_indexs), user_comparator_(user_comparator) {
         files_num = files_->size();
         child_current_ = new int[files_num];
         current_ = -1;
-        for(int i = 0;i < files_num; i++){
+        for(int i = 0;i < files_num; i++) {
             child_current_[i] = -1;
         }
     }
@@ -21,7 +22,7 @@ public:
         delete []child_current_;
     }
 
-    // 设置 child_current_ 为各文件当前的 index(first_key_index)
+    // index 设置为各文件待处理的第一个 key 下标 (first key index)
     void SeekToFirst(){
         for(int i = 0;i < files_num; i++){
             child_current_[i] = first_key_indexs_->at(i);
@@ -29,9 +30,9 @@ public:
         FindSmallest();
     }
 
-    // 设置 child_current_ 为 最后一个 key 的 index
+    // index 设置为各文件待处理的最后一个 key 下标
     void SeekToLast(){
-        for(int i = 0;i < files_num; i++){
+        for(int i = 0; i < files_num; i++){
             child_current_[i] = files_->at(i)->keys_num - 1;
         }
         FindLargest();
@@ -50,6 +51,7 @@ public:
         FindSmallest();
     }
 
+    // 当前正在处理的 file 及 key 信息
     void GetCurret(int &files_index, int &key_index){
         files_index = current_;
         key_index = child_current_[current_];
@@ -57,6 +59,7 @@ public:
 
 
 private:
+    // 各文件待处理的 最小 key 
     void FindSmallest(){
         int smallest = -1;
         for (int i = 0; i < files_num; i++) {
@@ -72,6 +75,7 @@ private:
         current_ = smallest;
     }
 
+    // 各文件待处理的 最大 key 
     void FindLargest(){
         int largest = -1;
         for (int i = files_num - 1; i >= 0; i--) {
@@ -91,8 +95,8 @@ private:
     std::vector<uint64_t> *first_key_indexs_;
     const Comparator* user_comparator_;
     int files_num;
-    int *child_current_;        //各个文件的当前index
-    int current_;               //files_的vector的index, 表示当前的iterator的指向
+    int *child_current_;        // 管理多个文件，当前处理的 key index
+    int current_;               // 当前正在处理的 FileEntry 下标
 };
 
 }

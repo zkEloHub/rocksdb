@@ -64,7 +64,8 @@ bool NvmCfModule::AddL0TableRoom(uint64_t filenum, char** raw,
   return true;
 }
 
-ColumnCompactionItem* NvmCfModule::PickColumnCompaction(VersionStorageInfo* vstorage){
+// [Important]
+ColumnCompactionItem* NvmCfModule::PickColumnCompaction(VersionStorageInfo* vstorage) {
   ColumnCompactionItem* c = nullptr;
   //todo:选择数据
   // 根据 vstorage 中的 L0Files, 更新 sst_meta_ 的 compaction_files 信息
@@ -320,10 +321,10 @@ ColumnCompactionItem* NvmCfModule::PickColumnCompaction(VersionStorageInfo* vsto
     //     RECORD_LOG("[Error] no find L0:%lu table!\n",filenum);
     //   }
     // }
-    // RECORD_LOG("L1Range_index:%u\n",L1Range_index);
-    // for(unsigned int i = 0;i < ((L1Range_index + 1)/2);i++){
-    //   c->L1compactionfiles.push_back(L1overlapfiles.at(i));
-    // }
+    RECORD_LOG("L1Range_index:%u\n",L1Range_index);
+    for(unsigned int i = 0;i < ((L1Range_index + 1)/2);i++) {
+      c->L1compactionfiles.push_back(L1overlapfiles.at(i));
+    }
     // delete k_iter;
     // delete []keys_num;
     // delete []keys_size;
@@ -372,6 +373,7 @@ ColumnCompactionItem* NvmCfModule::PickColumnCompaction(VersionStorageInfo* vsto
   return c;
 }
 
+// 返回 compaction score
 double NvmCfModule::GetCompactionScore() {
   double score = 0;
   uint64_t compactionfilenum = sst_meta_->GetFilesNumber();

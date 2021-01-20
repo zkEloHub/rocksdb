@@ -149,6 +149,7 @@ void CompactionPicker::GetRange(InternalKey* smallest, InternalKey* largest, Int
   *largest = icmp_->Compare(*largest1, *largest2) < 0 ? *largest2 : *largest1;
 }
 
+// 遍历 inputs, 返回 key range
 void CompactionPicker::GetRange(const CompactionInputFiles& inputs,
                                 InternalKey* smallest,
                                 InternalKey* largest) const {

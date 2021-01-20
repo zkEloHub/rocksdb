@@ -21,10 +21,10 @@ class InternalKeyComparator;
 
 // [Meta Data]
 struct KeysMetadata{
-  InternalKey key;   //InternalKey 的key
-  int32_t next;   //指向下一个key的index, 空为-1, 从0开始。
-  uint64_t offset;  //key-value结构的offset
-  uint64_t size;  //key-value结构的大小
+  InternalKey key;  // InternalKey 的key
+  int32_t next;     // 前向指针, 指向下一个 table 中 key >= 它本身的 key_meta, 空为-1, 从0开始。[cross hint search]
+  uint64_t offset;  // key-value结构的offset
+  uint64_t size;    // key-value结构的大小
 
   KeysMetadata(){
     next = -1;
@@ -43,7 +43,7 @@ struct FileEntry{
     struct KeysMetadata* keys_meta = nullptr; //指向多个（keys_num个）连续内存的KeysMetadata;  keys_meta 中的数据 按照 key 有序
     uint64_t keys_num;
    // uint64_t first_key_index;          //index 从0开始,在FileMetaData中保存
-    uint64_t key_point_filenum;       //key 指向下一个文件的filenum，防止中间删除了文件
+    uint64_t key_point_filenum;         // key 指向下一个文件的filenum，防止中间删除了文件
   
     FileEntry(uint64_t a,int b):filenum(a),sstable_index(b){
       keys_num = 0;

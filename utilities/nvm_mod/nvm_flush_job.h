@@ -73,8 +73,6 @@ public:
                 Env::Priority thread_pri);
 
      ~NvmFlushJob();
-     // Require db_mutex held.
-    // Once PickMemTable() is called, either Run() or Cancel() has to be called.
     void PickMemTable();
     Status Run(LogsWithPrepTracker* prep_tracker = nullptr,
                 FileMetaData* file_meta = nullptr);
@@ -102,9 +100,9 @@ private:
     // this job. All memtables in this column family with an ID smaller than or
     // equal to *max_memtable_id_ will be selected for flush. If null, then all
     // memtables in the column family will be selected.
-    const uint64_t* max_memtable_id_;
+    const uint64_t* max_memtable_id_;       // ID <= max_memtable_id_ 的 memtable 都将 flush
     const EnvOptions env_options_;
-    VersionSet* versions_;
+    VersionSet* versions_;                  // 一个 database 对应一个 VersionSet (collect of Version)
     InstrumentedMutex* db_mutex_;
     std::atomic<bool>* shutting_down_;
     std::vector<SequenceNumber> existing_snapshots_;
@@ -141,16 +139,12 @@ private:
     FileMetaData meta_;
     autovector<MemTable*> mems_;
     VersionEdit* edit_;
-    Version* base_;
+    Version* base_;                     // 当前 Column Family 对应的 Version
     bool pick_memtable_called;
 
     NvmCfModule *nvm_cf_;
     Env::Priority thread_pri_;
 };
-
-
-
-
 
 Status BuildTableInsertNVM(
     const std::string& dbname, Env* env, const ImmutableCFOptions& ioptions,
@@ -170,13 +164,4 @@ Status BuildTableInsertNVM(
     EventLogger* event_logger, int job_id, const Env::IOPriority io_priority,
     TableProperties* table_properties, int level, const uint64_t creation_time,
     const uint64_t oldest_key_time, Env::WriteLifeTimeHint write_hint, NvmCfModule *nvm_cf_);
-
-
-
-
-
-
-
-
-
 }

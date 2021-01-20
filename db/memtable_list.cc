@@ -268,17 +268,19 @@ bool MemTableList::IsFlushPending() const {
 }
 
 // Returns the memtables that need to be flushed.
+// 获取一个需要 flush 的 Memtable (MatrixKV 一次只允许一个 immutable)
 void MemTableList::PickMemtablesToFlush(const uint64_t* max_memtable_id,
                                         autovector<MemTable*>* ret) {
   AutoThreadOperationStageUpdater stage_updater(
       ThreadStatus::STAGE_PICK_MEMTABLES_TO_FLUSH);
-  const auto& memlist = current_->memlist_;
+  const auto& memlist = current_->memlist_;     // immutable that have not been flushed
   bool atomic_flush = false;
   for (auto it = memlist.rbegin(); it != memlist.rend(); ++it) {
     MemTable* m = *it;
     if (!atomic_flush && m->atomic_flush_seqno_ != kMaxSequenceNumber) {
       atomic_flush = true;
     }
+    // 只有 <= max_memtable_id 的 memtable 参与本次 flush; L0: nullptr
     if (max_memtable_id != nullptr && m->GetID() > *max_memtable_id) {
       break;
     }
@@ -290,7 +292,7 @@ void MemTableList::PickMemtablesToFlush(const uint64_t* max_memtable_id,
       }
       m->flush_in_progress_ = true;  // flushing will start very soon
       ret->push_back(m);
-      break;   //一次最多一个immutable加入flush
+      break;   // matrixKV: 一次最多一个immutable加入flush
     }
   }
   if (!atomic_flush || num_flush_not_started_ == 0) {

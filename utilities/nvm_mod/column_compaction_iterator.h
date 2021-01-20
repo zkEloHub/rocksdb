@@ -8,11 +8,13 @@
 namespace rocksdb {
 using std::vector;
 
-
+// 对 FileEntry(RowTable) 中 Key Value 数据访问(迭代器)的封装; CompactionItemIterator
 class ColumnCompactionItemIterator : public InternalIterator {
 public:
-    ColumnCompactionItemIterator(const InternalKeyComparator* icmp, char *raw_data,FileEntry* file,uint64_t first_key_index,uint64_t keys_num):
-                                   icmp_(icmp),raw_data_(raw_data),file_(file){
+    // first_key_index: 记录当前处理的 key 下标
+    // 根据 raw_data 地址, 从 nvm 中获取每个 key, value 信息 (Slice: addr, size)
+    ColumnCompactionItemIterator(const InternalKeyComparator* icmp, char *raw_data, FileEntry* file, uint64_t first_key_index, uint64_t keys_num):
+                                   icmp_(icmp), raw_data_(raw_data), file_(file) {
         current_ = -1;
         vKey_.reserve(keys_num);
         vValue_.reserve(keys_num);
@@ -24,48 +26,39 @@ public:
         uint64_t key_size = 0;
         uint64_t value_size = 0;
         uint64_t offset = 0;
-        for(size_t i = 0;i < keys_num; i++){  //注意：Slice结构只保留了char *指针和大小，并没有拷贝数据
+        // |--key_size, key--| |--value_size, value--|
+        for(size_t i = 0; i < keys_num; i++) {  //注意：Slice结构只保留了char *指针和大小，并没有拷贝数据
             //key_value_size = file_->keys_meta[file_->first_key_index + i].size;
             key_value_offset = file_->keys_meta[first_key_index + i].offset;
 
             offset = key_value_offset;
             key_size = DecodeFixed64(data_addr + offset);
             offset += 8;
-            vKey_.emplace_back(data_addr + offset,key_size);
+            vKey_.emplace_back(data_addr + offset, key_size);
             offset += key_size;
+
             value_size = DecodeFixed64(data_addr + offset);
             offset += 8;
-            vValue_.emplace_back(data_addr + offset,value_size);
+            vValue_.emplace_back(data_addr + offset, value_size);
+            // offset += value_size;
         }
-
-
     }
     ~ColumnCompactionItemIterator(){
 
     }
-
     
+    // current_ : 当前正在处理的 vKey
     bool Valid() const override {
-        //uint64_t xx= file_->filenum;
-        //printf("file:%lu xdc:%d m:%lu\n",xx,current_,vKey_.size());
-        if(current_ >= 0 && current_ < (int)vKey_.size()){
-            return true;
-        }
-        else{
-            //printf("nono\n");
-            return false;
-        }
+        return (current_ >= 0 && current_ < (int)vKey_.size());
     }
   
     void SeekToFirst() override {
         current_ = 0;
     }
-
  
     void SeekToLast() override{
         current_ = vKey_.size() - 1;
     }
-
   
     void Seek(const Slice& target) override {  //设置current_.key >= target
         //TODO
@@ -87,7 +80,6 @@ public:
             else {
                 left = right = mid;
             }
-
         }
         
         current_ = left ;
@@ -100,35 +92,28 @@ public:
             if( !Valid() ) return;
         }
     };
-
   
     void SeekForPrev(const Slice& ) override {
         //TODO
         printf("No SeekForPrev!\n");
     };
-
   
     void Next() override {
-        //assert(Valid());
         ++current_;
     };
-
   
     void Prev() override {
         assert(Valid());
         --current_;
     };
-
   
     Slice key() const override {
         return vKey_.at(current_);
     };
-
   
     Slice value() const override {
         return vValue_.at(current_);
     };
-
   
     Status status() const override {
        return Status::OK();
@@ -136,46 +121,42 @@ public:
 
 private:
     const InternalKeyComparator* icmp_;
-
-    char *raw_data_;
-    FileEntry* file_;
+    char *raw_data_;            // nvm 地址
+    FileEntry* file_;           // [RowTable]
     vector<Slice> vKey_;
     vector<Slice> vValue_;
-    int current_;
-
+    int current_;               // vkey_ 中当前正在处理的 key 下标
 };
+
 class ColumnCompactionWithBufferIterator : public InternalIterator {
 public:
-    ColumnCompactionWithBufferIterator(char *raw_data,FileEntry* file,uint64_t first_key_index,uint64_t keys_num):
-                                   raw_data_(raw_data),file_(file){
+    ColumnCompactionWithBufferIterator(char *raw_data, FileEntry* file, uint64_t first_key_index, uint64_t keys_num):
+                                   raw_data_(raw_data), file_(file) {
         current_ = -1;
         vKey_.reserve(keys_num);
         vValue_.reserve(keys_num);
 
-        uint64_t key_value_offset = file_->keys_meta[first_key_index].offset;
-        buf_size_ = (file_->keys_meta[first_key_index + keys_num - 1].offset - key_value_offset) + file_->keys_meta[first_key_index + keys_num - 1].size;
+        uint64_t first_kv_offset = file_->keys_meta[first_key_index].offset;
+        buf_size_ = (file_->keys_meta[first_key_index + keys_num - 1].offset - first_kv_offset) + file_->keys_meta[first_key_index + keys_num - 1].size;
         buf_ = new char[buf_size_];
-
-        memcpy(buf_,raw_data_ + key_value_offset,buf_size_);
+        
+        // NVM => Memory
+        memcpy(buf_, raw_data_ + first_kv_offset, buf_size_);
         //uint64_t key_value_size = 0;
         uint64_t key_size = 0;
         uint64_t value_size = 0;
         uint64_t offset = 0;
-        for(size_t i = 0;i < keys_num; i++){  //注意：Slice结构只保留了char *指针和大小，并没有拷贝数据
-            //key_value_size = file_->keys_meta[file_->first_key_index + i].size;
-            //key_value_offset = file_->keys_meta[first_key_index + i].offset;
-
-            offset = file_->keys_meta[first_key_index + i].offset - key_value_offset;
+        for(size_t i = 0; i < keys_num; i++) {  // 注意：Slice 结构只保留了char *指针和大小，并没有拷贝数据
+            // 根据当前 key 的 offset, 计算访问 key/value
+            offset = file_->keys_meta[first_key_index + i].offset - first_kv_offset;
             key_size = DecodeFixed64(buf_ + offset);
             offset += 8;
-            vKey_.emplace_back(buf_ + offset,key_size);
+            vKey_.emplace_back(buf_ + offset, key_size);
             offset += key_size;
             value_size = DecodeFixed64(buf_ + offset);
             offset += 8;
-            vValue_.emplace_back(buf_ + offset,value_size);
+            vValue_.emplace_back(buf_ + offset, value_size);
         }
-
-
     }
     ~ColumnCompactionWithBufferIterator(){
         delete buf_;
@@ -183,60 +164,44 @@ public:
 
     
     bool Valid() const override {
-        //uint64_t xx= file_->filenum;
-        //printf("file:%lu xdc:%d m:%lu\n",xx,current_,vKey_.size());
-        if(current_ >= 0 && current_ < (int)vKey_.size()){
-            return true;
-        }
-        else{
-            //printf("nono\n");
-            return false;
-        }
+        return (current_ >= 0 && current_ < (int)vKey_.size());
     }
   
     void SeekToFirst() override {
         current_ = 0;
     }
-
  
     void SeekToLast() override{
         current_ = vKey_.size() - 1;
     }
-
   
     void Seek(const Slice& ) override {
         //TODO
         printf("No seek!\n");
     };
-
   
     void SeekForPrev(const Slice& ) override {
         //TODO
         printf("No SeekForPrev!\n");
     };
-
   
     void Next() override {
         //assert(Valid());
         ++current_;
     };
-
   
     void Prev() override {
         assert(Valid());
         --current_;
     };
-
   
     Slice key() const override {
         return vKey_.at(current_);
     };
-
   
     Slice value() const override {
         return vValue_.at(current_);
     };
-
   
     Status status() const override {
        return Status::OK();
@@ -250,22 +215,19 @@ private:
     int current_;
     char*  buf_;
     uint64_t buf_size_;
-
 };
 
 class NVMLevel0ReadIterator : public InternalIterator {
 public:
-    NVMLevel0ReadIterator(const InternalKeyComparator* icmp, char *raw_data,FileEntry* file,uint64_t first_key_index,uint64_t keys_num):
-                                   icmp_(icmp),raw_data_(raw_data),file_(file),first_key_index_(first_key_index),keys_num_(keys_num){
+    NVMLevel0ReadIterator(const InternalKeyComparator* icmp, char *raw_data, FileEntry* file, uint64_t first_key_index, uint64_t keys_num):
+                                   icmp_(icmp), raw_data_(raw_data), file_(file), first_key_index_(first_key_index), keys_num_(keys_num){
         current_ = -1;
-
         assert(keys_num > 0);
-
     }
+
     ~NVMLevel0ReadIterator(){
 
     }
-
     
     bool Valid() const override {
         //uint64_t xx= file_->filenum;
@@ -278,16 +240,14 @@ public:
             return false;
         }
     }
-  
+
     void SeekToFirst() override {
         current_ = 0;
     }
 
- 
     void SeekToLast() override{
         current_ = keys_num_ - 1;
     }
-
   
     void Seek(const Slice& target) override {  //设置current_.key >= target
         //TODO
@@ -309,7 +269,6 @@ public:
             else {
                 left = right = mid;
             }
-
         }
         
         current_ = left ;
@@ -328,7 +287,6 @@ public:
         //TODO
         printf("No SeekForPrev!\n");
     };
-
   
     void Next() override {
         //assert(Valid());
@@ -368,7 +326,7 @@ public:
         value_size = DecodeFixed64(raw_data_ + offset);
         offset += 8;
 
-        return Slice(raw_data_ + offset,value_size);
+        return Slice(raw_data_ + offset, value_size);
     };
 
   
@@ -383,11 +341,7 @@ private:
     FileEntry* file_;
     uint64_t first_key_index_;
     uint64_t keys_num_;
-
-
-    
     int current_;
-
 };
 
 InternalIterator* NewColumnCompactionItemIterator(const InternalKeyComparator* icmp, char *raw_data,FileEntry* file,uint64_t first_key_index,uint64_t keys_num,bool use_buffer = false);

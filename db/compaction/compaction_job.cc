@@ -575,6 +575,7 @@ Status CompactionJob::Run() {
   log_buffer_->FlushBufferToLog();
   LogCompaction();
 
+  // 多线程 sub compaction
   const size_t num_threads = compact_->sub_compact_states.size();
   assert(num_threads > 0);
   const uint64_t start_micros = env_->NowMicros();
@@ -823,6 +824,7 @@ Status CompactionJob::Install(const MutableCFOptions& mutable_cf_options) {
   return status;
 }
 
+// SubCompaction
 void CompactionJob::ProcessKeyValueCompaction(SubcompactionState* sub_compact) {
   assert(sub_compact != nullptr);
 
@@ -856,17 +858,18 @@ void CompactionJob::ProcessKeyValueCompaction(SubcompactionState* sub_compact) {
   /*std::unique_ptr<InternalIterator> input(versions_->MakeInputIterator(
       sub_compact->compaction, &range_del_agg, env_options_for_read_)); */
 
+  // ColumnCompactionItem: 在 PickCompaction 时生成
   std::unique_ptr<InternalIterator> input = nullptr;
-  if(sub_compact->compaction->GetColumnCompactionItem() == nullptr){
+  if(sub_compact->compaction->GetColumnCompactionItem() == nullptr) {
     input.reset(versions_->MakeInputIterator(
       sub_compact->compaction, &range_del_agg, env_options_for_read_));
   }
-  else{  //column compaction
-    RECORD_LOG("column compaction job run\n");
+  else {  //column compaction
+    RECORD_LOG("[Info] ColumnCompaction: job run\n");
     log_buffer_->FlushBufferToLog();
     input.reset(versions_->MakeColumnCompactionInputIterator(
       sub_compact->compaction, &range_del_agg, env_options_for_read_));
-    RECORD_LOG("column compaction job MakeColumnCompactionInputIterator\n");
+    RECORD_LOG("[Info] ColumnCompaction: job MakeColumnCompactionInputIterator\n");
   }
 
   AutoThreadOperationStageUpdater stage_updater(

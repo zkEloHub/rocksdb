@@ -780,7 +780,7 @@ class AtomicGroupReadBuffer {
 };
 
 // VersionSet is the collection of versions of all the column families of the
-// database. Each database owns one VersionSet. A VersionSet has access to all
+// database. [Each database owns one VersionSet.] A VersionSet has access to all
 // column families via ColumnFamilySet, i.e. set of the column families.
 class VersionSet {
  public:

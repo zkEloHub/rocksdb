@@ -846,6 +846,7 @@ Status DBImpl::PreprocessWrite(const WriteOptions& write_options,
     status = SwitchWAL(write_context);
   }
 
+  // 判断 memtable 大小是否达到限制
   if (UNLIKELY(status.ok() && write_buffer_manager_->ShouldFlush())) {
     // Before a new memtable is added in SwitchMemtable(),
     // write_buffer_manager_->ShouldFlush() will keep returning true. If another
@@ -1319,7 +1320,9 @@ Status DBImpl::HandleWriteBufferFull(WriteContext* write_context) {
     }
     FlushRequest flush_req;
     GenerateFlushRequest(cfds, &flush_req);
+    // 将当前需要 flush 的 flush_req 添加到 flush_queue_
     SchedulePendingFlush(flush_req, FlushReason::kWriteBufferFull);
+    // 调度执行 Flush
     MaybeScheduleFlushOrCompaction();
   }
   return status;

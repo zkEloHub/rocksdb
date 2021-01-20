@@ -1,0 +1,126 @@
+[Info] Column Family message: use_nvm_module:1 pmem_path:/mnt/nvm0 write_buffer_size:64.000000 MB 
+             Level0_column_compaction_trigger_size:7168.000000 MB  
+             Level0_column_compaction_slowdown_size:7680.000000 MB  
+             Level0_column_compaction_stop_size:8192.000000 MB  
+             Column_compaction_no_L1_select_L0:4 
+             Column_compaction_have_L1_select_L0:2 
+             level0_stop_writes_trigger:36 target_file_size_base:64.000000 MB
+crest PersistentSstable path:/mnt/nvm0/cf_0_default_sstable.pool map_len:33024.000000 MB is:0 each_size:128.000000 MB number:258 total_size:33024.000000 MB
+creat SstableMetadata
+[Info] Column Family message: use_nvm_module:1 pmem_path:/mnt/nvm0 write_buffer_size:64.000000 MB 
+             Level0_column_compaction_trigger_size:7168.000000 MB  
+             Level0_column_compaction_slowdown_size:7680.000000 MB  
+             Level0_column_compaction_stop_size:8192.000000 MB  
+             Column_compaction_no_L1_select_L0:4 
+             Column_compaction_have_L1_select_L0:2 
+             level0_stop_writes_trigger:36 target_file_size_base:64.000000 MB
+crest PersistentSstable path:/mnt/nvm0/cf_2_column_family_name_000002_sstable.pool map_len:33024.000000 MB is:0 each_size:128.000000 MB number:258 total_size:33024.000000 MB
+creat SstableMetadata
+compaction_num:0 pick_compaction_time:0 l0_get_time:0 l0_find_num:0
+NvmCfModule:close
+compaction_num:0 pick_compaction_time:0 l0_get_time:0 l0_find_num:0
+NvmCfModule:close
+DestroyDB delete dir:/mnt/nvm0
+DestroyDB delete file:/mnt/nvm0/cf_0_default_sstable.pool
+DestroyDB delete file:/mnt/nvm0/cf_2_column_family_name_000002_sstable.pool
+[Info] Column Family message: use_nvm_module:1 pmem_path:/mnt/nvm0 write_buffer_size:64.000000 MB 
+             Level0_column_compaction_trigger_size:7168.000000 MB  
+             Level0_column_compaction_slowdown_size:7680.000000 MB  
+             Level0_column_compaction_stop_size:8192.000000 MB  
+             Column_compaction_no_L1_select_L0:4 
+             Column_compaction_have_L1_select_L0:2 
+             level0_stop_writes_trigger:36 target_file_size_base:64.000000 MB
+crest PersistentSstable path:/mnt/nvm0/cf_0_default_sstable.pool map_len:33024.000000 MB is:0 each_size:128.000000 MB number:258 total_size:33024.000000 MB
+creat SstableMetadata
+[Info] Column Family message: use_nvm_module:1 pmem_path:/mnt/nvm0 write_buffer_size:64.000000 MB 
+             Level0_column_compaction_trigger_size:7168.000000 MB  
+             Level0_column_compaction_slowdown_size:7680.000000 MB  
+             Level0_column_compaction_stop_size:8192.000000 MB  
+             Column_compaction_no_L1_select_L0:4 
+             Column_compaction_have_L1_select_L0:2 
+             level0_stop_writes_trigger:36 target_file_size_base:64.000000 MB
+crest PersistentSstable path:/mnt/nvm0/cf_2_column_family_name_000002_sstable.pool map_len:33024.000000 MB is:0 each_size:128.000000 MB number:258 total_size:33024.000000 MB
+creat SstableMetadata
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:12 index:0
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:12 keynum:15629 size:61.65 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:15 index:0
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:15 keynum:15635 size:61.67 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:18 index:1
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:18 keynum:15629 size:61.65 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:21 index:1
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:21 keynum:15639 size:61.69 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:24 index:2
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:24 keynum:15639 size:61.69 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:27 index:2
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:27 keynum:15632 size:61.66 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:33 index:3
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:33 keynum:15639 size:61.69 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:37 index:3
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:37 keynum:15634 size:61.67 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:42 index:4
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:42 keynum:15643 size:61.70 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:43 index:4
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:43 keynum:15632 size:61.66 MB metadata:0.78 MB
+CompactionJob::Install start
+CompactionJob::Install end
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:49 index:5
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:49 keynum:15630 size:61.65 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:50 index:5
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:50 keynum:15629 size:61.65 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:55 index:6
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:55 keynum:15632 size:61.66 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:56 index:6
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:56 keynum:15640 size:61.69 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:62 index:7
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:62 keynum:15637 size:61.68 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:63 index:7
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:63 keynum:15631 size:61.65 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:69 index:8
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:69 keynum:15638 size:61.68 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:71 index:8
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:71 keynum:15628 size:61.64 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:76 index:9
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:76 keynum:15631 size:61.65 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:80 index:9
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:80 keynum:15640 size:61.69 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:84 index:10
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:84 keynum:15620 size:61.61 MB metadata:0.77 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:85 index:10
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:85 keynum:15645 size:61.71 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:91 index:11
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:91 keynum:15641 size:61.69 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:94 index:11
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:94 keynum:15637 size:61.68 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:98 index:12
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:98 keynum:15639 size:61.69 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:99 index:12
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:99 keynum:15632 size:61.66 MB metadata:0.78 MB
+CompactionJob::Install start
+CompactionJob::Install end
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:105 index:13
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:105 keynum:15632 size:61.66 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:107 index:13
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:107 keynum:15648 size:61.72 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:110 index:14
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:110 keynum:15637 size:61.68 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:114 index:14
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:114 keynum:15640 size:61.69 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:120 index:15
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:120 keynum:15640 size:61.69 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:122 index:15
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:122 keynum:15640 size:61.69 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:128 index:16
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:128 keynum:15631 size:61.65 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:129 index:16
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:129 keynum:15632 size:61.66 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:135 index:17
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:135 keynum:15636 size:61.67 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:137 index:17
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:137 keynum:15630 size:61.65 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:143 index:18
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:143 keynum:15645 size:61.71 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:145 index:18
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;finish L0 table:145 keynum:15632 size:61.66 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;add L0 table:150 index:19
+[Info] KV Persist: nvm_path: /mnt/nvm0, cf_id: 2, cf_name: column_family_name_000002 ;finish L0 table:150 keynum:15628 size:61.64 MB metadata:0.78 MB
+nvm_path: /mnt/nvm0, cf_id: 0, cf_name: default ;add L0 table:151 index:19

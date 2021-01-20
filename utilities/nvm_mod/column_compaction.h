@@ -11,6 +11,7 @@ namespace rocksdb {
 struct FileMetaData;
 class InternalKey;
 
+// 一次 Column Compaction 对应的实例
 struct ColumnCompactionItem{
 public:
     ColumnCompactionItem(){};
@@ -21,8 +22,8 @@ public:
     std::vector<uint64_t> keys_size; //对应的key-value的总大小
     uint64_t L0select_size;         // level0 中本次 compaction 的总数据量
 
-    std::vector<FileMetaData*> L0compactionfiles;       // 本次 compaction 的 FileMetaData 信息
-    std::vector<FileMetaData*> L1compactionfiles;
+    std::vector<FileMetaData*> L0compactionfiles;       // 本次 compaction 中 L0 的 FileMetaData 信息
+    std::vector<FileMetaData*> L1compactionfiles;       // 本次 compaction 中 L1 的 FileMetaData 信息 (overlap)
 
     InternalKey L0smallest; //  smallest <= compaction的范围  <= largest       
     InternalKey L0largest;

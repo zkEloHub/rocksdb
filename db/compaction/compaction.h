@@ -81,7 +81,8 @@ class Compaction {
              std::vector<FileMetaData*> grandparents,
              bool manual_compaction = false, double score = -1,
              bool deletion_compaction = false,
-             CompactionReason compaction_reason = CompactionReason::kUnknown,ColumnCompactionItem* ccitem = nullptr);
+             CompactionReason compaction_reason = CompactionReason::kUnknown,
+             ColumnCompactionItem* ccitem = nullptr);
 
   // No copying allowed
   Compaction(const Compaction&) = delete;

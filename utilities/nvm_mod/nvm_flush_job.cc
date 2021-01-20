@@ -125,7 +125,6 @@ NvmFlushJob::NvmFlushJob(const std::string& dbname,
     base_(nullptr),
     pick_memtable_called(false),
     thread_pri_(thread_pri) {
-
         nvm_cf_ = cfd_->nvmcfmodule;
         assert(nvm_cf_ != nullptr);
         ReportStartedFlush();
@@ -162,6 +161,9 @@ void NvmFlushJob::RecordFlushIOStats() {
   IOSTATS_RESET(bytes_written);
 }
 
+// 1. 从 cfd_->MemTableList 中拿到一个 immutable (mems_)
+// 2. 初始化 trasaction log 的 edit
+// 3. base_ (Version*) 设置为当前 cfd 的 current_
 void NvmFlushJob::PickMemTable() {
   db_mutex_->AssertHeld();
   assert(!pick_memtable_called);
@@ -172,30 +174,38 @@ void NvmFlushJob::PickMemTable() {
     return;
   }
 
+  /// TODO: 
   ReportFlushInputSize(mems_);
 
   // entries mems are (implicitly) sorted in ascending order by their created
   // time. We will use the first memtable's `edit` to keep the meta info for
   // this flush.
   MemTable* m = mems_[0];
+
+  // edit: The updates to be applied to the transaction log when flush m.[log]
   edit_ = m->GetEdits();
   edit_->SetPrevLogNumber(0);
+
   // SetLogNumber(log_num) indicates logs with number smaller than log_num
   // will no longer be picked up for recovery.
   edit_->SetLogNumber(mems_.back()->GetNextLogNumber());
   edit_->SetColumnFamily(cfd_->GetID());
 
   // path 0 for level 0 file.
+  // 分配 L0 file number
   meta_.fd = FileDescriptor(versions_->NewFileNumber(), 0, 0); //file_meta加入cf
 
   base_ = cfd_->current();
   base_->Ref();  // it is likely that we do not need this reference
 }
 
+// WriteLevel0Table: 将 memTable flush 到 nvm (RowTable)
+// 记录 RowTable 信息到 file_meta
 Status NvmFlushJob::Run(LogsWithPrepTracker* prep_tracker,
                      FileMetaData* file_meta) { //file_meta加入cf
   //TEST_SYNC_POINT("FlushJob::Start");
   db_mutex_->AssertHeld();
+  // 必须先 pick 一个 memTable
   assert(pick_memtable_called);
   AutoThreadOperationStageUpdater stage_run(
       ThreadStatus::STAGE_FLUSH_RUN);
@@ -221,6 +231,7 @@ Status NvmFlushJob::Run(LogsWithPrepTracker* prep_tracker,
   }
 
   // This will release and re-acquire the mutex.
+  // MemTable Flush. => RowTable(FileEntry)
   Status s = WriteLevel0Table();
 
   if (s.ok() &&
@@ -232,7 +243,6 @@ Status NvmFlushJob::Run(LogsWithPrepTracker* prep_tracker,
   if (!s.ok()) {
     cfd_->imm()->RollbackMemtableFlush(mems_, meta_.fd.GetNumber());
   } else if (write_manifest_) {
-    //TEST_SYNC_POINT("FlushJob::InstallResults");
     // Replace immutable memtable with the generated Table
     s = cfd_->imm()->TryInstallMemtableFlushResults(
         cfd_, mutable_cf_options_, mems_, prep_tracker, versions_, db_mutex_,
@@ -280,6 +290,9 @@ void NvmFlushJob::Cancel() {
   base_->Unref();
 }
 
+// 1. 将 PickMemTable 选出的 mems_ 处理成 internal iterators (memtables, range_del_iters)
+// 2. BuildInsertNvm 处理 Iterator 数据, 最终持久化到 nvm
+// 3. 将 flush 后的 table 信息(meta_) 存到 edit_
 Status NvmFlushJob::WriteLevel0Table() {
   AutoThreadOperationStageUpdater stage_updater(
       ThreadStatus::STAGE_FLUSH_WRITE_L0);
@@ -338,8 +351,6 @@ Status NvmFlushJob::WriteLevel0Table() {
                      cfd_->GetName().c_str(), job_context_->job_id,
                      meta_.fd.GetNumber());
 
-      /*TEST_SYNC_POINT_CALLBACK("FlushJob::WriteLevel0Table:output_compression",
-                               &output_compression_);*/
       int64_t _current_time = 0;
       auto status = db_options_.env->GetCurrentTime(&_current_time);
       // Safe to proceed even if GetCurrentTime fails. So, log and proceed.
@@ -350,30 +361,13 @@ Status NvmFlushJob::WriteLevel0Table() {
             "Status: %s",
             status.ToString().c_str());
       }
-      //const uint64_t current_time = static_cast<uint64_t>(_current_time);
-
-     // uint64_t oldest_key_time =
-          //mems_.front()->ApproximateOldestKeyTime();
-
-      
-        s=BuildInsertNvm(iter.get(),
-                         std::move(range_del_iters),
-                         cfd_->internal_comparator(),
-                         existing_snapshots_,
-                         earliest_write_conflict_snapshot_,
-                         snapshot_checker_);
-      /*s = BuildTable(
-          dbname_, db_options_.env, *cfd_->ioptions(), mutable_cf_options_,
-          env_options_, cfd_->table_cache(), iter.get(),
-          std::move(range_del_iters), &meta_, cfd_->internal_comparator(),
-          cfd_->int_tbl_prop_collector_factories(), cfd_->GetID(),
-          cfd_->GetName(), existing_snapshots_,
-          earliest_write_conflict_snapshot_, snapshot_checker_,
-          output_compression_, cfd_->ioptions()->compression_opts,
-          mutable_cf_options_.paranoid_file_checks, cfd_->internal_stats(),
-          TableFileCreationReason::kFlush, event_logger_, job_context_->job_id,
-          Env::IO_HIGH, &table_properties_, 0 level , current_time,
-          oldest_key_time, write_hint);*/
+      // iter 数据持久化
+      s = BuildInsertNvm(iter.get(),
+                        std::move(range_del_iters),
+                        cfd_->internal_comparator(),
+                        existing_snapshots_,
+                        earliest_write_conflict_snapshot_,
+                        snapshot_checker_);
       LogFlush(db_options_.info_log);
     }
     ROCKS_LOG_INFO(db_options_.info_log,
@@ -400,8 +394,9 @@ Status NvmFlushJob::WriteLevel0Table() {
     // insert files directly into higher levels because some other
     // threads could be concurrently producing compacted files for
     // that key range.
-    // Add file to L0
 
+    // Add file to L0
+    // 存储 flush 后的 FileMetaData 信息
     edit_->AddFile(0 /* level */, meta_.fd.GetNumber(), meta_.fd.GetPathId(),
                    meta_.fd.GetFileSize(), meta_.smallest, meta_.largest,
                    meta_.fd.smallest_seqno, meta_.fd.largest_seqno,
@@ -421,14 +416,20 @@ Status NvmFlushJob::WriteLevel0Table() {
   return s;
 }
 
+// 1. nvm 中分配 table
+// 2. iter KV 持久化到 nvm (通过 L0builder)
+// 3. 将 flush 之后的 L0(table) 信息更新到 meta_
 Status NvmFlushJob::BuildInsertNvm(InternalIterator *iter,
                         std::vector<std::unique_ptr<FragmentedRangeTombstoneIterator>> range_del_iters,
                         const InternalKeyComparator &internal_comparator,
                         std::vector<SequenceNumber> snapshots,
                         SequenceNumber earliest_write_conflict_snapshot,
-                        SnapshotChecker *snapshot_checker){
-    //const size_t kReportFlushIOStatsEvery = 1048576;
-  Env* env=db_options_.env;
+                        SnapshotChecker *snapshot_checker) {
+  if(nvm_cf_ == nullptr) {
+    RECORD_LOG("[Error] build table but nvm_cf_ == nullptr!\n");
+    return Status::InvalidArgument("nvm cf error");
+  }
+  Env* env = db_options_.env;
   Status s;
   meta_.fd.file_size = 0;
   iter->SeekToFirst();
@@ -438,52 +439,17 @@ Status NvmFlushJob::BuildInsertNvm(InternalIterator *iter,
     range_del_agg->AddTombstones(std::move(range_del_iter));
   }
 
-  /*std::string fname = TableFileName(ioptions.cf_paths, meta->fd.GetNumber(),
-                                    meta->fd.GetPathId());*/
-/*#ifndef ROCKSDB_LITE
-  EventHelpers::NotifyTableFileCreationStarted(
-      ioptions.listeners, dbname, column_family_name, fname, job_id, reason);
-#endif  // !ROCKSDB_LITE*/
- // TableProperties tp;
-
   if (iter->Valid() || !range_del_agg->IsEmpty()) {
-    /*TableBuilder* builder;
-    std::unique_ptr<WritableFileWriter> file_writer;
-    {
-      std::unique_ptr<WritableFile> file;
-#ifndef NDEBUG
-      bool use_direct_writes = env_options.use_direct_writes;
-      TEST_SYNC_POINT_CALLBACK("BuildTable:create_file", &use_direct_writes);
-#endif  // !NDEBUG*/
-      /*s = NewWritableFile(env, fname, &file, env_options);
-      if (!s.ok()) {
-        EventHelpers::LogAndNotifyTableFileCreationFinished(
-            event_logger, ioptions.listeners, dbname, column_family_name, fname,
-            job_id, meta->fd, tp, reason, s);
-        return s;
-      }
-      file->SetIOPriority(io_priority);
-      file->SetWriteLifeTimeHint(write_hint);
-
-      file_writer.reset(new WritableFileWriter(std::move(file), fname,
-                                               env_options, ioptions.statistics,
-                                               ioptions.listeners));*/
-      /*builder = NewTableBuilder(
-          ioptions, mutable_cf_options, internal_comparator,
-          int_tbl_prop_collector_factories, column_family_id,
-          column_family_name, file_writer.get(), compression, compression_opts,
-          level, nullptr * compression_dict *, false * skip_filters ,
-          //creation_time, oldest_key_time);
-    //}*/
     FileEntry* file = nullptr;
     char* raw = nullptr;
-    bool ret = nvm_cf_->AddL0TableRoom(meta_.fd.GetNumber(),&raw,&file);
+    // 分配 nvm table 空间 (char *, FileEntry)
+    bool ret = nvm_cf_->AddL0TableRoom(meta_.fd.GetNumber(), &raw, &file);
     if (!ret) {
       s = Status::NoSpace();
       return s;
     }
-    //L0TableBuilder* L0builder = new L0TableBuilder(nvm_cf_,file,raw);
-    L0TableBuilderWithBuffer* L0builder = new L0TableBuilderWithBuffer(nvm_cf_,file,raw);
+    // 封装了对 KV 的 Add, Finish(buf_ => nvm)
+    L0TableBuilderWithBuffer* L0builder = new L0TableBuilderWithBuffer(nvm_cf_, file, raw);
 
     MergeHelper merge(env, internal_comparator.user_comparator(),
                       cfd_->ioptions()->merge_operator, nullptr, cfd_->ioptions()->info_log,
@@ -491,6 +457,7 @@ Status NvmFlushJob::BuildInsertNvm(InternalIterator *iter,
                       snapshots.empty() ? 0 : snapshots.back(),
                       snapshot_checker);
 
+    // 将 memtable 中的 key 添加(Add)到 TableBuilder
     CompactionIterator c_iter(
         iter, internal_comparator.user_comparator(), &merge, kMaxSequenceNumber,
         &snapshots, earliest_write_conflict_snapshot, snapshot_checker, env,
@@ -501,20 +468,13 @@ Status NvmFlushJob::BuildInsertNvm(InternalIterator *iter,
     for (; c_iter.Valid(); c_iter.Next()) {
       const Slice& key = c_iter.key();
       const Slice& value = c_iter.value();
-      //builder->Add(key, value);
       L0builder->Add(key, value);
       
       number_entry++;
       meta_.UpdateBoundaries(key, c_iter.ikey().sequence);
-
-      // TODO(noetzli): Update stats after flush, too.
-      /*if (io_priority == Env::IO_HIGH &&
-          IOSTATS(bytes_written) >= kReportFlushIOStatsEvery) {
-        ThreadStatusUtil::SetThreadOperationProperty(
-            ThreadStatus::FLUSH_BYTES_WRITTEN, IOSTATS(bytes_written));
-      }*/
     }
 
+    /// TDOO: MatrixKV range_del_it kv 未加入
     auto range_del_it = range_del_agg->NewIterator();
     for (range_del_it->SeekToFirst(); range_del_it->Valid();
          range_del_it->Next()) {
@@ -532,24 +492,15 @@ Status NvmFlushJob::BuildInsertNvm(InternalIterator *iter,
     }
 
     bool empty = number_entry == 0;
-    // Finish and check for builder errors
-    /*tp = builder->GetTableProperties();
-    bool empty = builder->NumEntries() == 0 && tp.num_range_deletions == 0;
-    s = c_iter.status();
-    if (!s.ok() || empty) {
-      builder->Abandon();
-    } else {
-      s = builder->Finish();
-    }*/
-    if (!s.ok() || empty) {
-      printf("error:abandon L0builder\n");
-    } else {
-      s = L0builder->Finish();
-    }
 
+    // Finish 完成持久化
+    // 持久化后的 FileEntry(RowTable) 信息更新到 meta_
     if (s.ok() && !empty) {
+      s = L0builder->Finish();
+
       uint64_t file_size = L0builder->GetFileSize();
       meta_.fd.file_size = file_size;
+      // for nvm
       meta_.is_nvm_level0 = true;
       meta_.first_key_index = 0;
       meta_.nvm_sstable_index = file->sstable_index;
@@ -557,64 +508,21 @@ Status NvmFlushJob::BuildInsertNvm(InternalIterator *iter,
       meta_.key_point_filenum = file->key_point_filenum;
       meta_.raw_file_size = file_size;
       meta_.nvm_meta_size = L0builder->GetKeysMetaSize();
-      /*uint64_t file_size = builder->FileSize();
-      meta_->fd.file_size = file_size;
-      meta_->marked_for_compaction = builder->NeedCompact();
-      assert(meta_->fd.GetFileSize() > 0);
-      tp = builder->GetTableProperties(); // refresh now that builder is finished
-      if (table_properties) {
-        *table_properties = tp;
-      }*/
-    }
-    //delete builder;
 
-    // Finish and check for file errors
-    if (s.ok() && !empty) {
+      // Finish and check for file errors
       StopWatch sw(env, cfd_->ioptions()->statistics, TABLE_SYNC_MICROS);
-      //s = file_writer->Sync(cfd_->ioptions()->use_fsync);
+    } else {
+      /// TODO: 未处理 Abandon
+      RECORD_LOG("[Error] abandon L0builder\n");
     }
-    /*if (s.ok() && !empty) {
-      s = file_writer->Close();
-    }*/
 
-    /*if (s.ok() && !empty) {
-      // Verify that the table is usable
-      // We set for_compaction to false and don't OptimizeForCompactionTableRead
-      // here because this is a special case after we finish the table building
-      // No matter whether use_direct_io_for_flush_and_compaction is true,
-      // we will regrad this verification as user reads since the goal is
-      // to cache it here for further user reads
-      std::unique_ptr<InternalIterator> it(table_cache->NewIterator(
-          ReadOptions(), env_options, internal_comparator, *meta,
-          nullptr * range_del_agg ,
-          mutable_cf_options.prefix_extractor.get(), nullptr,
-          (internal_stats == nullptr) ? nullptr
-                                      : internal_stats->GetFileReadHist(0),
-          false * for_compaction *, nullptr * arena *,
-          false * skip_filter *, level));
-      s = it->status();
-      if (s.ok() && paranoid_file_checks) {
-        for (it->SeekToFirst(); it->Valid(); it->Next()) {
-        }
-        s = it->status();
-      }
-    }*/
-  delete L0builder;
+    delete L0builder;
   }
 
   // Check for input iterator errors
   if (!iter->status().ok()) {
     s = iter->status();
   }
-
-  /*if (!s.ok() || meta_->fd.GetFileSize() == 0) {
-    env->DeleteFile(fname);
-  }*/
-
-  // Output to event logger and fire events.
-  /*EventHelpers::LogAndNotifyTableFileCreationFinished(
-      event_logger, ioptions.listeners, dbname, column_family_name, fname,
-      job_id, meta_->fd, tp, reason, s);*/
 
   return s;
 }
@@ -638,12 +546,9 @@ Status BuildTableInsertNVM(
     EventLogger* /* event_logger */, int /* job_id */, const Env::IOPriority /* io_priority */,
     TableProperties* /* table_properties */, int /* level */, const uint64_t /* creation_time */,
     const uint64_t /* oldest_key_time */, Env::WriteLifeTimeHint /* write_hint */, NvmCfModule *nvm_cf_ = nullptr) {
-  /* assert((column_family_id ==
-          TablePropertiesCollectorFactory::Context::kUnknownColumnFamily) ==
-         column_family_name.empty()); */
 
   if(nvm_cf_ == nullptr) {
-    printf("error:build table but nvm_cf_ == nullptr!\n");
+    RECORD_LOG("[Error] build table but nvm_cf_ == nullptr!\n");
     return Status::InvalidArgument("nvm cf error");
   }
   // Reports the IOStats for flush for every following bytes.
@@ -657,44 +562,7 @@ Status BuildTableInsertNVM(
     range_del_agg->AddTombstones(std::move(range_del_iter));
   }
 
-  /* std::string fname = TableFileName(ioptions.cf_paths, meta->fd.GetNumber(),
-                                    meta->fd.GetPathId());
-#ifndef ROCKSDB_LITE
-  EventHelpers::NotifyTableFileCreationStarted(
-      ioptions.listeners, dbname, column_family_name, fname, job_id, reason);
-#endif  // !ROCKSDB_LITE
-  TableProperties tp; */
-
   if (iter->Valid() || !range_del_agg->IsEmpty()) {
-    /* TableBuilder* builder;
-    std::unique_ptr<WritableFileWriter> file_writer;
-    {
-      std::unique_ptr<WritableFile> file;
-#ifndef NDEBUG
-      bool use_direct_writes = env_options.use_direct_writes;
-      TEST_SYNC_POINT_CALLBACK("BuildTable:create_file", &use_direct_writes);
-#endif  // !NDEBUG
-      s = NewWritableFile(env, fname, &file, env_options);
-      if (!s.ok()) {
-        EventHelpers::LogAndNotifyTableFileCreationFinished(
-            event_logger, ioptions.listeners, dbname, column_family_name, fname,
-            job_id, meta->fd, tp, reason, s);
-        return s;
-      }
-      file->SetIOPriority(io_priority);
-      file->SetWriteLifeTimeHint(write_hint);
-
-      file_writer.reset(new WritableFileWriter(std::move(file), fname,
-                                               env_options, ioptions.statistics,
-                                               ioptions.listeners));
-      builder = NewTableBuilder(
-          ioptions, mutable_cf_options, internal_comparator,
-          int_tbl_prop_collector_factories, column_family_id,
-          column_family_name, file_writer.get(), compression, compression_opts,
-          level, nullptr * compression_dict *, false * skip_filters *,
-          creation_time, oldest_key_time);
-    } */
-
     FileEntry* file = nullptr;
     char* raw = nullptr;
     nvm_cf_->AddL0TableRoom(meta->fd.GetNumber(),&raw,&file);
@@ -724,13 +592,6 @@ Status BuildTableInsertNVM(
       number_entry++;
 
       meta->UpdateBoundaries(key, c_iter.ikey().sequence);
-
-      // TODO(noetzli): Update stats after flush, too.
-      /* if (io_priority == Env::IO_HIGH &&
-          IOSTATS(bytes_written) >= kReportFlushIOStatsEvery) {
-        ThreadStatusUtil::SetThreadOperationProperty(
-            ThreadStatus::FLUSH_BYTES_WRITTEN, IOSTATS(bytes_written));
-      } */
     }
 
     auto range_del_it = range_del_agg->NewIterator();

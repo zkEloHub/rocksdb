@@ -101,11 +101,13 @@ void SstableMetadata::GetL0Files(std::vector<FileMetaData*>& L0files, std::vecto
     mu_->Unlock();
 }
 
+// [更新前向指针]: 每个 key_mata.next 指向下一个 Table 中 `>= 它本身的` key_meta
 void SstableMetadata::UpdateKeyNext(FileEntry* file) {
     if(file == nullptr || file->keys_num == 0) {
         return ;
     }
     mu_->Lock();
+    // 在 files_ 中找到 file 的下一个
     std::vector<FileEntry*>::iterator it = files_.begin();
     for(; it != files_.end(); it++) {
         if((*it)->filenum == file->filenum) {
@@ -126,7 +128,7 @@ void SstableMetadata::UpdateKeyNext(FileEntry* file) {
     int32_t new_index = 0;
     int32_t old_index = 0;
     while((uint64_t)new_index < new_key_num && (uint64_t)old_index < old_key_num) {
-        // new_key >= old_key
+        // old_key >= new_key
         if(icmp_->Compare(old_keys[old_index].key, new_keys[new_index].key) >= 0) {   //相同user key，新插入的会比旧的小
             new_keys[new_index].next = old_index;
             new_index++;
@@ -194,9 +196,9 @@ void SstableMetadata::UpdateCompactionState(std::vector<FileMetaData*>& L0files)
             break;
         } */
     }
-    // 未达到 Level0_column_compaction_trigger_size 触发 (这里可能是达到文件个数限制)
+    // 未达到 Level0_column_compaction_trigger_size 触发 (这里可能是达到table文件个数限制)
     if (compaction_files_size < nvmcfoption_->Level0_column_compaction_trigger_size) {
-        RECORD_LOG("warn:L0 l0_files_size:%f MB < Level0_column_compaction_trigger_size:%f MB\n",compaction_files_size/1048576.0, nvmcfoption_->Level0_column_compaction_trigger_size/1048576.0);
+        RECORD_LOG("[Warn] L0 l0_files_size:%f MB < Level0_column_compaction_trigger_size:%f MB\n",compaction_files_size/1048576.0, nvmcfoption_->Level0_column_compaction_trigger_size/1048576.0);
     }
     
     RECORD_LOG("UpdateCompactionState:select:%.2f MB num:%ld[",compaction_files_size/1048576.0,compaction_files.size());
@@ -215,7 +217,7 @@ void SstableMetadata::DeleteCompactionFile(uint64_t filenumber) {
             return;
         }
     }
-    RECORD_LOG("warn: no delete compaction file:%ld\n",filenumber);
+    RECORD_LOG("[Warn] no delete compaction file:%ld\n",filenumber);
 }
 
 uint64_t SstableMetadata::GetFilesNumber(){

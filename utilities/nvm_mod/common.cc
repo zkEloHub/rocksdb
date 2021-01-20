@@ -2,6 +2,7 @@
 
 #include "common.h"
 
+// nvm 文件生成
 namespace rocksdb {
 int nvm_file_exists(const char* file) { return access(file, F_OK); }
 

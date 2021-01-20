@@ -1735,7 +1735,7 @@ Status FlushMemTablesToNvm(
   // Once the background threads are scheduled, we decrease unscheduled_flushes_
   // and unscheduled_compactions_. That way we keep track of number of
   // compaction and flush threads we need to schedule. This scheduling is done
-  // in MaybeScheduleFlushOrCompaction()
+  // in MaybeScheduleFlushOrCompaction().
   // invariant(column family present in flush_queue_ <==>
   // ColumnFamilyData::pending_flush_ == true)
   std::deque<FlushRequest> flush_queue_;
