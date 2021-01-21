@@ -24,7 +24,7 @@ struct ImmutableCFOptions {
   explicit ImmutableCFOptions(const Options& options);
 
   ImmutableCFOptions(const ImmutableDBOptions& db_options,
-                     const ColumnFamilyOptions& cf_optionsm, bool with_nvm = false);
+                     const ColumnFamilyOptions& cf_optionsm);
 
   CompactionStyle compaction_style;
 
@@ -122,8 +122,6 @@ struct ImmutableCFOptions {
   std::vector<DbPath> cf_paths;
 
   std::shared_ptr<ConcurrentTaskLimiter> compaction_thread_limiter;
-
-  bool with_nvm_ = false;
   
   std::shared_ptr<NvmCfOptions> nvm_cf_options = nullptr;
 };

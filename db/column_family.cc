@@ -416,7 +416,7 @@ ColumnFamilyData::ColumnFamilyData(
       dropped_(false),
       internal_comparator_(cf_options.comparator),
       initial_cf_options_(SanitizeOptions(db_options, cf_options)),
-      ioptions_(db_options, initial_cf_options_, cf_options.with_nvm),
+      ioptions_(db_options, initial_cf_options_),
       mutable_cf_options_(initial_cf_options_),
       is_delete_range_supported_(
           cf_options.table_factory->IsDeleteRangeSupported()),

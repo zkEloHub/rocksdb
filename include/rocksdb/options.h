@@ -326,6 +326,11 @@ struct ColumnFamilyOptions : public AdvancedColumnFamilyOptions {
   void Dump(Logger* log) const;
 
   bool with_nvm = false;
+  bool with_num_trigger = false;
+
+  uint64_t Level0_column_compaction_trigger_size = 0;  //7G trigger
+  uint64_t Level0_column_compaction_slowdown_size = 0;  //7.5G slowdown
+  uint64_t Level0_column_compaction_stop_size = 0;   //8G stop
 };
 
 enum class WALRecoveryMode : char {

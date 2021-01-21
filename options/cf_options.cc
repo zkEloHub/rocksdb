@@ -21,7 +21,7 @@ ImmutableCFOptions::ImmutableCFOptions(const Options& options)
     : ImmutableCFOptions(ImmutableDBOptions(options), options) {}
 
 ImmutableCFOptions::ImmutableCFOptions(const ImmutableDBOptions& db_options,
-                                       const ColumnFamilyOptions& cf_options, bool with_nvm)
+                                       const ColumnFamilyOptions& cf_options)
     : compaction_style(cf_options.compaction_style),
       compaction_pri(cf_options.compaction_pri),
       user_comparator(cf_options.comparator),
@@ -73,10 +73,9 @@ ImmutableCFOptions::ImmutableCFOptions(const ImmutableDBOptions& db_options,
       memtable_insert_with_hint_prefix_extractor(
           cf_options.memtable_insert_with_hint_prefix_extractor.get()),
       cf_paths(cf_options.cf_paths),
-      compaction_thread_limiter(cf_options.compaction_thread_limiter),
-      with_nvm_(with_nvm) {
-        if(db_options.nvm_setup != nullptr && with_nvm_){
-          nvm_cf_options = std::make_shared<NvmCfOptions>(db_options.nvm_setup,cf_options.write_buffer_size,cf_options.max_write_buffer_number,cf_options.level0_stop_writes_trigger,cf_options.target_file_size_base);
+      compaction_thread_limiter(cf_options.compaction_thread_limiter) {
+        if(db_options.nvm_setup != nullptr && cf_options.with_nvm) {
+          nvm_cf_options = std::make_shared<NvmCfOptions>(db_options.nvm_setup, cf_options);
         }
       }
 
