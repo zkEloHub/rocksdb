@@ -46,6 +46,7 @@ NvmCfOptions::NvmCfOptions(const std::shared_ptr<NvmSetup> setup,
       Column_compaction_no_L1_select_L0(setup->Column_compaction_no_L1_select_L0),
       Column_compaction_have_L1_select_L0(setup->Column_compaction_have_L1_select_L0),
       write_buffer_size(cf_options.write_buffer_size),
+      meta_buffer_size(cf_options.meta_buffer_size),
       max_write_buffer_number(cf_options.max_write_buffer_number),
       level0_stop_writes_trigger(cf_options.level0_stop_writes_trigger),
       target_file_size_base(cf_options.target_file_size_base) {
@@ -60,6 +61,7 @@ NvmCfOptions::NvmCfOptions(const std::shared_ptr<NvmSetup> setup,
     Level0_column_compaction_stop_size = setup->Level0_column_compaction_stop_size;
   }
 
+  // 启用数量限制
   if (cf_options.with_num_trigger) {
       Level0_column_compaction_trigger_file_num = (Level0_column_compaction_stop_size / write_buffer_size) * 1.5;
   }

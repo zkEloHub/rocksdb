@@ -23,13 +23,15 @@ NvmCfModule::NvmCfModule(NvmCfOptions* nvmcfoption, const std::string& cf_name,
   }
   // buffer size: 64M
   // stop_size: 8192M
-  uint64_t level0_table_num = (nvmcfoption_->Level0_column_compaction_stop_size/nvmcfoption_->write_buffer_size + 1)*2;
-  ptr_sst_ = new PersistentSstable(pol_path,nvmcfoption_->write_buffer_size + 64ul * 1024 * 1024,
-            level0_table_num);
-  
+  uint64_t level0_table_num = (nvmcfoption_->Level0_column_compaction_stop_size / nvmcfoption_->write_buffer_size + 1)*2;
+  ptr_sst_ = new PersistentSstable(
+      pol_path,
+      nvmcfoption_->write_buffer_size + nvmcfoption_->meta_buffer_size,
+      level0_table_num);
+
   sst_meta_ = new SstableMetadata(icmp_, nvmcfoption_);
-  
 }
+
 NvmCfModule::~NvmCfModule() {
   RECORD_LOG("compaction_num:%lu pick_compaction_time:%lu l0_get_time:%lu l0_find_num:%lu\n",global_stats.compaction_num, global_stats.pick_compaction_time,
       global_stats.l0_get_time, global_stats.l0_find_num);
